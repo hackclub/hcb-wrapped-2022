@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Wrapped</title>
+    <link rel="stylesheet" href="./hc.css" />
+</head>
+<body>
+    <div class="container copy">
+        <h1 class="ultratitle" style="margin-top: var(--spacing-3);">Bank Wrapped</h1>
+        <h1 class="headline">Config</h1>
+        <div class="card sunken">
+            <form class="config">
+                <label for="userId">User ID</label>
+                <input type="text" id="userId" name="userId" placeholder="usr_SlhPTx" style="margin-bottom: var(--spacing-3);" class="persist-ls" spellcheck="false" />
+
+                <label for="orgSlugs">Org Slugs (delimited by new lines)</label>
+                <textarea id="orgSlugs" name="orgSlugs" placeholder="assemble
+hackoc" style="width: 100%; resize: vertical;" class="persist-ls" spellcheck="false"></textarea>
+                
+                <button type="submit" class="button wrap" style="margin-top: var(--spacing-3); width: 100%" class="wrap">Wrap</button>
+            </form>
+        </div>
+        
+        <h1 class="headline">Output</h1>
+        <pre><code class="output" style="white-space: pre;"><span class="data">🎁 Ready to wrap!</span><span class="loading" style="pointer-events: none; font-weight: bold; display: block; color: var(--blue);"></span></code></pre>
+    </div>
+    <script src="./index.js" type="module"></script>
+</body>
+</html>
