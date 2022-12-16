@@ -20,7 +20,6 @@ async function pager (getPage, endCriteria, handlePages, upperLimit) {
         const pageData = await handlePromise(getPage(i + 1));
         pages.push(pageData);
         const done = endCriteria(pageData);
-        console.log({ done })
         if (done) break;
     }
 
@@ -58,8 +57,6 @@ export class Wrapped {
     }
 
     #indexOrg (orgData, transactions) {
-        console.log(transactions);
-
         for (const member of orgData.users) {
             if (!this.data.collaborators.includes(member.id)) this.data.collaborators.push(member.id);
         }
@@ -87,13 +84,10 @@ export class Wrapped {
         for (const org of this.orgSlugs) {
             const orgData = await api.v3.organizations[org].get();
             const transactions = await pager(page => (pulse(), api.v3.organizations[org].transactions.searchParams({ per_page: 100, page: page }).get()), page => {
-                const works = page.filter(tx => {
+                return page.filter(tx => {
                     let year = new Date(tx.date).getFullYear();
-                    console.log(year, this.year)
                     return year < this.year;
                 }).length != 0 || !page.length;
-                console.log({ works });
-                return works;
             }, pages => pages.flat());
             this.#indexOrg(orgData, transactions);
         }
