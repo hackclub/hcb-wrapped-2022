@@ -160,10 +160,12 @@ console.log(transactions);
         this.#reactiveUpdate(100);
         clearInterval(interval);
 
+        this.#wrap();
+
         this.nextScreen();
     }
 
-    wrap () {
+    #wrap () {
         this.metrics = {
             collaborators: this.data.collaborators.length,
             orgs: this.data.orgs.length,
@@ -192,7 +194,7 @@ const screens = {
                     </p>
                 </div>
             </div>
-            <h3 class="eyebrow">Welcome, <span style="color: var(--smoke);">${name}</span>!</h3>
+            <h3 class="eyebrow">Welcome, <span style="color: var(--slate);">${name}</span>!</h3>
         `;
     }
 }
@@ -201,7 +203,6 @@ const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org
 
 function run () {
     myWrapped.fetch().then(() => {
-        console.log(myWrapped.wrap());
     });
 }
 
