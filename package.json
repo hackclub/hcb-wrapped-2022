@@ -1,0 +1,22 @@
+{
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "name": "bank-wrapped",
+  "description": "Hack Club Bank Wrapped 2022",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "http-server -c-1",
+    "dev": "npm run start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hackclub/bank-wrapped.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hackclub/bank-wrapped/issues"
+  },
+  "homepage": "https://github.com/hackclub/bank-wrapped#readme"
+}
