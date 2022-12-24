@@ -49,14 +49,13 @@ export class Wrapped {
 
         this.metrics = {};
 
-        this.orgUpdates = 0;
         this.orgsCompleted = 0;
         this.isLargeOrg = false;
         this.orgUpdateMs = Date.now();
     }
 
     #reactiveUpdate (value) {
-        const percentage = value ?? Math.floor((((Date.now() - this.orgUpdateMs) / 5000) + (this.orgsCompleted + (this.orgUpdates / (this.isLargeOrg ? 70 : 20) /* arbitrary number, HQ has about this number of pages and it seems to be the max */)) / this.orgSlugs.length * 100) * 100) / 100;
+        const percentage = value ?? Math.floor((((Date.now() - this.orgUpdateMs) / 5000) + (this.orgsCompleted) / this.orgSlugs.length * 100) * 100) / 100;
         dom['#loading-value'].innerText = percentage;
         dom['.meter'].setAttribute('style', `--value: ${percentage / 100};`);
     }
@@ -96,22 +95,30 @@ export class Wrapped {
 
         const interval = setInterval(() => this.#reactiveUpdate(), 200);
 
+        const asyncFns = [];
+
         for (const org of this.orgSlugs) {
-            this.isLargeOrg = org == 'hq';
-            const [orgData, transactions] = await Promise.all([
-                await api.v3.organizations[org].get(),
-                await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 100, page: page }).get()), page => {
-                    return page.filter(tx => {
-                        let year = new Date(tx.date).getFullYear();
-                        return year < this.year;
-                    }).length != 0 || !page.length;
-                }, pages => pages.flat())
-            ]);
-            this.orgsCompleted++;
-            this.orgUpdates = 0;
-            this.orgUpdateMs = Date.now();
-            this.#indexOrg(orgData, transactions);
+            asyncFns.push((async () => {
+
+                this.isLargeOrg = org == 'hq';
+                const [orgData, transactions] = await Promise.all([
+                    await api.v3.organizations[org].get(),
+                    await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 100, page: page }).get()), page => {
+                        return page.filter(tx => {
+                            let year = new Date(tx.date).getFullYear();
+                            return year < this.year;
+                        }).length != 0 || !page.length;
+                    }, pages => pages.flat())
+                ]);
+                this.orgsCompleted++;
+                // this.orgUpdates = 0;
+                // this.orgUpdateMs = Date.now();
+                this.#indexOrg(orgData, transactions);
+
+            })());
         }
+
+        await Promise.all(asyncFns);
 
         const keywordsMap = new Map([...new Map([ ...new Set(this.data.keywords) ].map(keyword => [keyword, this.data.keywords.filter(k => k == keyword).length])).entries()].sort((a, b) => b[1] - a[1]));
         const keywordsObject = Object.fromEntries([...keywordsMap.keys()].filter((keyword, i) => keywordsMap.get(keyword) > 5 && i <= 30).map(keyword => [keyword, keywordsMap.get(keyword)]));
@@ -152,7 +159,7 @@ export class Wrapped {
 
 const searchParams = new URLSearchParams(window.location.search);
 
-const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(','));
+const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5));
 
 function run () {
     myWrapped.fetch().then(() => {
