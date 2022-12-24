@@ -48,7 +48,11 @@
             box-shadow: var(--shadow-1);
             width: calc(100vw - 100px);
             min-width: 300px;
-            max-width: 500px;
+            max-width: 600px;
+        }
+
+        div.content {
+            text-align: center;
         }
 
         div.bg {
@@ -86,14 +90,35 @@
         div.inner-footer * {
             color: white;
         }
+
+        div.progress {
+            width: 100%;
+            height: 32px;
+            border: 4px solid var(--smoke);
+            background: var(--snow);
+            border-radius: 16px;
+        }
+
+        div.progress > div.meter {
+            height: 100%;
+            background: var(--red);
+            width: min(max(calc(var(--value) * 100%), 24px), 100%);
+            transition: width 0.5s;
+            border-radius: 16px;
+        }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <div class="main">
-            <h1 style="font-size: 68px;">
-                🏦 🎁 👀
-            </h1>
+            <div class="content">
+                <h1 class="title"><span style="color: var(--red);">Bank</span> Wrapped</h1>
+                <h2 class="headline" style="margin-bottom: var(--spacing-5);">🏦 🎁 2022</h2>
+                <div class="progress" style="margin-bottom: var(--spacing-2);">
+                    <div class="meter" style="--value: 0;"></div>
+                </div>
+                <h3 class="eyebrow">Loading... <span id="loading-value">0</span>%</h3>
+            </div>
         </div>
     </div>
     <div class="bg-wrapper">
@@ -104,8 +129,6 @@
             <p>Bank Wrapped 2022<span style="white-space: pre;">  |  </span><a href="https://bank.hackclub.com">Hack Club Bank</a><span style="white-space: pre;">  |  </span><a href="https://github.com/hackclub/bank-wrapped">Source Code</a></p>
         </div>
     </div>
-    <script>
-
-    </script>
+    <script src="index.js" type="module"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ window.dom = new Proxy({ fn: document.querySelector.bind(document) }, {
 
 const params = object => '?' + Object.entries(object).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
 
-async function flattenPotentialPromise (promise) {
+async function handlePromise (promise) {
     if (promise instanceof Promise) await promise;
     return promise;
 }
@@ -16,7 +16,7 @@ async function flattenPotentialPromise (promise) {
 async function pager (getPage, endCriteria, handlePages, upperLimit) {
     const pages = [];
     for (let i = 0; !upperLimit || i < upperLimit; i++) {
-        const pageData = await flattenPotentialPromise(getPage(i + 1));
+        const pageData = await handlePromise(getPage(i + 1));
         pages.push(pageData);
         const done = endCriteria(pageData);
         if (done) break;
@@ -24,6 +24,16 @@ async function pager (getPage, endCriteria, handlePages, upperLimit) {
 
     return handlePages(pages);
 }
+
+const loadingPhrases = () => [
+    'Following the money',
+    'Sifting through the data',
+    'Tallying up holiday cheer',
+    'Decking the halls',
+    'Counting down the days',
+    [ 'Making a list', 'Checking it twice' ],
+    'Printing receipts'
+].sort(() => Math.random() - 0.5).flat();
 
 async function setWordCloud (url) {
     const res = await fetch(url);
@@ -57,8 +67,7 @@ export class Wrapped {
 
     #reactiveUpdate (value) {
         const percentage = value ?? Math.floor((((Date.now() - this.orgUpdateMs) / 5000) + (this.orgsCompleted + (this.orgUpdates / (this.isLargeOrg ? 70 : 20) /* arbitrary number, HQ has about this number of pages and it seems to be the max */)) / this.orgSlugs.length * 100) * 100) / 100;
-        dom['#loading-value'].innerText = percentage;
-        dom['.meter'].setAttribute('style', `--value: ${percentage / 100};`);
+        dom['.status'].innerText = `${percentage}%`;
     }
 
     #indexOrg (orgData, transactions) {
@@ -82,9 +91,7 @@ export class Wrapped {
             ].includes(k)));
         }
 
-        const amountSpent = 0 // transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.card_charge.user.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
-        // not working right now since user isn't uncluded
-        // TODO: fix that
+        const amountSpent = transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.user.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
         this.data.orgs.push({
             name: orgData.name,
             amountSpent,
@@ -150,14 +157,26 @@ export class Wrapped {
     }
 }
 
-const searchParams = new URLSearchParams(window.location.search);
-
-const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(','));
+let loading = false;
+let phrases = loadingPhrases();
+const myWrapped = new Wrapped('usr_BetQLy', ['assemble', 'hackoc', 'epoch-ba']);
 
 function run () {
+    loading = true;
+    phrases = loadingPhrases();
     myWrapped.fetch().then(() => {
-        console.log(myWrapped.wrap());
+        dom['code.output .data'].innerText = (JSON.stringify(myWrapped.wrap(), null, 4));
+        loading = false;
+        dom['.loading'].innerText = '';
     });
 }
 
-run();
+setInterval(() => {
+    if (loading) dom['.loading'].innerText = '\n' + phrases[(Math.floor(Date.now() / 3000)) % phrases.length] + '...';
+}, 1000);
+
+dom['.config'].onsubmit = e => {
+    e.preventDefault();
+    run();
+    dom['.wrap'].disabled = true;
+};
