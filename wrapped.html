@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./hc.css"></link>
+    <title>Bank Wrapped</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body, div.wrapper, div.bg-wrapper {
+            margin: 0px;
+            padding: 0px;
+            height: 100%;
+            width: 100%;
+        }
+
+        div.bg-wrapper {
+            position: absolute;
+            z-index: 4;
+            top: 0px;
+            left: 0px;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--red);
+        }
+
+        div.wrapper {
+            z-index: 10;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        div.main {
+            background: white;
+            padding: var(--spacing-5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 16px;
+            box-shadow: var(--shadow-1);
+            width: calc(100vw - 100px);
+            min-width: 300px;
+            max-width: 500px;
+        }
+
+        div.bg {
+            background: url("assets/freeze2.svg");
+            background-repeat: space;
+            background-size: 80px 80px;
+            color: white;
+            z-index: 5;
+            position: absolute;
+            top: 0px;
+            width: 200vw;
+            height: 200vh;
+            left: 0px;
+            transform: rotate(20deg) translate(-25%, -25%);
+        }
+
+        div.footer {
+            position: absolute;
+            bottom: 0px;
+            left: 0px;
+            width: 100%;
+            padding: var(--spacing-3);
+            text-align: center;
+            color: white;
+            z-index: 11;
+        }
+
+        div.inner-footer {
+            background: #ec374f92;
+            display: inline-block;
+            box-shadow: 0px 0px 40px 0px #ec374f92;
+            padding: 16px;
+        }
+
+        div.inner-footer * {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="main">
+            <h1 style="font-size: 68px;">
+                🏦 🎁 👀
+            </h1>
+        </div>
+    </div>
+    <div class="bg-wrapper">
+        <div class="bg"></div>
+    </div>
+    <div class="footer">
+        <div class="inner-footer">
+            <p>Bank Wrapped 2022<span style="white-space: pre;">  |  </span><a href="https://bank.hackclub.com">Hack Club Bank</a><span style="white-space: pre;">  |  </span><a href="https://github.com/hackclub/bank-wrapped">Source Code</a></p>
+        </div>
+    </div>
+    <script>
+
+    </script>
+</body>
+</html>
