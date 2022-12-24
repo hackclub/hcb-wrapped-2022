@@ -6,6 +6,15 @@ window.dom = new Proxy({ fn: document.querySelector.bind(document) }, {
     }
 });
 
+window.html = ((strings, ...values) => {
+    let html = '';
+    strings.forEach((string, i) => {
+        html += string;
+        if (values[i]) html += values[i].replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))
+    });
+    return html;
+});
+
 const params = object => '?' + Object.entries(object).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
 
 async function flattenPotentialPromise (promise) {
@@ -34,10 +43,13 @@ async function setWordCloud (url) {
 }
 
 export class Wrapped {
-    constructor (userId, orgSlugs, year = 2022) {
+    constructor (userId, orgSlugs, screens = {}, year = 2022) {
         this.userId = userId;
         this.orgSlugs = orgSlugs;
         this.year = year;
+
+        this.screens = Object.values(screens);
+        this.currentScreen = -1;
 
         this.data = {
             collaborators: [],
@@ -54,6 +66,12 @@ export class Wrapped {
         this.orgUpdateMs = Date.now();
     }
 
+    nextScreen () {
+        this.currentScreen++;
+        const value = this.screens[this.currentScreen](this.metrics);
+        dom['.content'].innerHTML = value;
+    }
+
     #reactiveUpdate (value) {
         const percentage = value ?? Math.floor((((Date.now() - this.orgUpdateMs) / 5000) + (this.orgsCompleted) / this.orgSlugs.length * 100) * 100) / 100;
         dom['#loading-value'].innerText = percentage;
@@ -62,6 +80,7 @@ export class Wrapped {
 
     #indexOrg (orgData, transactions) {
         for (const member of orgData.users) {
+            if (member.id == this.userId) this.data.name = member.full_name;
             if (!this.data.collaborators.includes(member.id)) this.data.collaborators.push(member.id);
         }
 
@@ -80,10 +99,9 @@ export class Wrapped {
                 'a'
             ].includes(k)));
         }
+console.log(transactions);
+        const amountSpent = transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.card_charge.user.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
 
-        const amountSpent = 0 // transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.card_charge.user.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
-        // not working right now since user isn't uncluded
-        // TODO: fix that
         this.data.orgs.push({
             name: orgData.name,
             amountSpent,
@@ -103,7 +121,7 @@ export class Wrapped {
                 this.isLargeOrg = org == 'hq';
                 const [orgData, transactions] = await Promise.all([
                     await api.v3.organizations[org].get(),
-                    await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 100, page: page }).get()), page => {
+                    await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 500, page: page, expand: 'card_charge' }).get()), page => {
                         return page.filter(tx => {
                             let year = new Date(tx.date).getFullYear();
                             return year < this.year;
@@ -127,20 +145,22 @@ export class Wrapped {
 
         this.data.keywords_object = keywordsObject;
 
-        setWordCloud('https://quickchart.io/wordcloud' + params({
-            text: keywordsList.slice(0, 500).join(' '),
-            colors: JSON.stringify(`#ec3750
-#ff8c37
-#f1c40f
-#33d6a6
-#5bc0de
-#338eda
-#a633d6`.split('\n')),
-            nocache: Date.now()
-        }));
+//         setWordCloud('https://quickchart.io/wordcloud' + params({
+//             text: keywordsList.slice(0, 500).join(' '),
+//             colors: JSON.stringify(`#ec3750
+// #ff8c37
+// #f1c40f
+// #33d6a6
+// #5bc0de
+// #338eda
+// #a633d6`.split('\n')),
+//             nocache: Date.now()
+//         }));
 
         this.#reactiveUpdate(100);
         clearInterval(interval);
+
+        this.nextScreen();
     }
 
     wrap () {
@@ -150,7 +170,8 @@ export class Wrapped {
             amountSpent: this.data.orgs.reduce((acc, org) => acc + org.amountSpent, 0),
             mostSpentOrg: this.data.orgs.sort((a, b) => b.amountSpent - a.amountSpent)[0].name,
             transactions_cents: this.data.global_transactions_cents,
-            top_keywords: this.data.keywords_object
+            top_keywords: this.data.keywords_object,
+            name: this.data.name
         };
 
         return this.metrics;
@@ -159,7 +180,24 @@ export class Wrapped {
 
 const searchParams = new URLSearchParams(window.location.search);
 
-const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5));
+const screens = {
+    loading ({ name }) {
+        return html`
+            <h1 class="title"><span style="color: var(--red);">Bank</span> Wrapped</h1>
+            <h2 class="headline" style="margin-bottom: var(--spacing-5);">🏦 🎁 2022</h2>
+            <div class="progress" style="margin-bottom: var(--spacing-2);">
+                <div class="meter" style="--value: 1;">
+                    <p>
+                        <span id="loading-value">100</span>%
+                    </p>
+                </div>
+            </div>
+            <h3 class="eyebrow">Welcome, <span style="color: var(--smoke);">${name}</span>!</h3>
+        `;
+    }
+}
+
+const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens);
 
 function run () {
     myWrapped.fetch().then(() => {

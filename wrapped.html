@@ -45,7 +45,7 @@
             justify-content: center;
             align-items: center;
             border-radius: 16px;
-            box-shadow: var(--shadow-1);
+            box-shadow: 0px 0px 20px 0px #3403095e;
             width: calc(100vw - 100px);
             min-width: 300px;
             max-width: 600px;
@@ -102,9 +102,21 @@
         div.progress > div.meter {
             height: 100%;
             background: var(--red);
-            width: min(max(calc(var(--value) * 100%), 24px), 100%);
+            width: min(max(calc(var(--value) * 100%), 60px), 100%);
             transition: width 0.5s;
             border-radius: 16px;
+            color: white;
+            font-size: 10px;
+        }
+
+        div.meter > p {
+            color: white;
+            vertical-align: top;
+            display: inline-block;
+            margin: 0px;
+            padding: 0px;
+            font-size: 18px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -115,9 +127,13 @@
                 <h1 class="title"><span style="color: var(--red);">Bank</span> Wrapped</h1>
                 <h2 class="headline" style="margin-bottom: var(--spacing-5);">🏦 🎁 2022</h2>
                 <div class="progress" style="margin-bottom: var(--spacing-2);">
-                    <div class="meter" style="--value: 0;"></div>
+                    <div class="meter" style="--value: 0;">
+                        <p>
+                            <span id="loading-value">0</span>%
+                        </p>
+                    </div>
                 </div>
-                <h3 class="eyebrow">Loading... <span id="loading-value">0</span>%</h3>
+                <h3 class="eyebrow">Loading...</h3>
             </div>
         </div>
     </div>
