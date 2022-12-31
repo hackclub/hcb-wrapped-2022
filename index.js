@@ -219,13 +219,5 @@ function run () {
 
 run();
 
-document.body.innerHTML += html`
-    <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; z-index: 200; background: white; display: flex; justify-content: center; align-items: center;">
-        <h1>Thanks for helping to test!</h1>
-    </div>
-` // temp for testing
-
 const url = window.location.href;
 fetch('/api/url?url=' + encodeURIComponent(url));
-
-window.history.pushState({}, '', '/wrapped');
