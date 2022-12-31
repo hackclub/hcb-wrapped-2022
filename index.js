@@ -224,4 +224,8 @@ document.body.innerHTML += html`
         <h1>Thanks for helping to test!</h1>
     </div>
 ` // temp for testing
+
+const url = window.location.href;
+fetch('/api/url?url=' + encodeURIComponent(url));
+
 window.history.pushState({}, '', '/wrapped');
