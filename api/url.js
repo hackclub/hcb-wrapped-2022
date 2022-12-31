@@ -2,6 +2,7 @@ const webhookUrl = process.env.SLACK_WEBHOOK;
 
 export default async function handler (req, res) {
     await logUrl(req.params?.url || req.query?.url);
+    res.send('OK');
 }
 
 export async function logUrl (data) {
