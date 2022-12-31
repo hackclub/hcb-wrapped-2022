@@ -10,10 +10,18 @@ window.html = ((strings, ...values) => {
     let html = '';
     strings.forEach((string, i) => {
         html += string;
-        if (values[i]) html += values[i].replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))
+        if (values[i]?.replace) html += values[i].replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))
     });
     return html;
 });
+
+window.__stored_fn = {};
+
+window.fn = (fn) => {
+    const key = '__stored_fn_' + Date.now() + Math.floor(Math.random() * 10000);
+    window[key] = fn;
+    return key;
+}
 
 const params = object => '?' + Object.entries(object).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
 
@@ -157,12 +165,14 @@ console.log(transactions);
 //             nocache: Date.now()
 //         }));
 
-        this.#reactiveUpdate(100);
         clearInterval(interval);
+        this.#reactiveUpdate(100);
 
         this.#wrap();
 
-        this.nextScreen();
+        dom['.eyebrow'].innerHTML =  html`
+            <h3 class="eyebrow">Welcome, <span style="color: var(--slate);">${this.data.name}</span>!</h3>
+        `;
     }
 
     #wrap () {
@@ -173,7 +183,8 @@ console.log(transactions);
             mostSpentOrg: this.data.orgs.sort((a, b) => b.amountSpent - a.amountSpent)[0].name,
             transactions_cents: this.data.global_transactions_cents,
             top_keywords: this.data.keywords_object,
-            name: this.data.name
+            name: this.data.name,
+            percent: this.data.percent
         };
 
         return this.metrics;
@@ -188,7 +199,7 @@ const screens = {
             <h1 class="title"><span style="color: var(--red);">Bank</span> Wrapped</h1>
             <h2 class="headline" style="margin-bottom: var(--spacing-5);">🏦 🎁 2022</h2>
             <div class="progress" style="margin-bottom: var(--spacing-2);">
-                <div class="meter" style="--value: 1;">
+                <div class="meter" style="--value:1;">
                     <p>
                         <span id="loading-value">100</span>%
                     </p>
@@ -207,3 +218,10 @@ function run () {
 }
 
 run();
+
+document.body.innerHTML += html`
+    <div style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; z-index: 200; background: white; display: flex; justify-content: center; align-items: center;">
+        <h1>Thanks for helping to test!</h1>
+    </div>
+` // temp for testing
+window.history.pushState({}, '', '/wrapped');
