@@ -80,8 +80,12 @@ export class Wrapped {
         dom['.content'].innerHTML = value;
     }
 
+    #exponentialCurve (x, cap = 100) {
+        return Math.max(0, (0 - (cap * 0.9)) * 0.993 ** x + (cap * 0.9));
+    }
+
     #reactiveUpdate (value) {
-        const percentage = value ?? Math.floor((((Date.now() - this.orgUpdateMs) / 5000) + (this.orgsCompleted) / this.orgSlugs.length * 100) * 100) / 100;
+        const percentage = value ?? Math.max(Math.floor((this.#exponentialCurve((Date.now() - this.orgUpdateMs) / 100, 100 / this.orgSlugs.length) + (this.orgsCompleted) / this.orgSlugs.length * 100) * 1) / 1, 1);
         dom['#loading-value'].innerText = percentage;
         dom['.meter'].setAttribute('style', `--value: ${percentage / 100};`);
     }
@@ -166,13 +170,18 @@ console.log(transactions);
 //         }));
 
         clearInterval(interval);
-        this.#reactiveUpdate(100);
+
+        setTimeout(() => this.#reactiveUpdate (100), 10);
 
         this.#wrap();
 
         dom['.eyebrow'].innerHTML =  html`
-            <h3 class="eyebrow">Welcome, <span style="color: var(--slate);">${this.data.name}</span>!</h3>
+            <h3 class="eyebrow eyebrow-child">Welcome, <span style="color: var(--slate);">${this.data.name}</span>!</h3>
         `;
+
+        dom['.eyebrow:not(.eyebrow-child)'].parentElement.innerHTML += html`
+            <button style="margin-top: var(--spacing-3);" class="btn-lg">Start →</button>
+        `
     }
 
     #wrap () {
