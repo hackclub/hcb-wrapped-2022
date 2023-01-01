@@ -74,6 +74,10 @@ export class Wrapped {
         this.orgUpdateMs = Date.now();
     }
 
+    get shareLink () {
+        return `https://hack.af/wrapped?q=${this.userId.substring(4)}_${this.orgSlugs.map(slug => slug.substring(4)).join('_')}_${this.data.name ? encodeURIComponent(this.data.name.split('_').join(' ')) : '0'}`;
+    }
+
     nextScreen () {
         this.currentScreen++;
         const value = this.screens[this.currentScreen](this.metrics);
@@ -181,7 +185,9 @@ console.log(transactions);
 
         dom['.eyebrow:not(.eyebrow-child)'].parentElement.innerHTML += html`
             <button style="margin-top: var(--spacing-3);" class="btn-lg">Start →</button>
-        `
+        `;
+
+        console.log(this.shareLink);
     }
 
     #wrap () {
@@ -220,6 +226,8 @@ const screens = {
 }
 
 const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens);
+console.log(myWrapped.shareLink);
+
 
 function run () {
     myWrapped.fetch().then(() => {
