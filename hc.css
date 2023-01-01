@@ -508,12 +508,12 @@ td {
 }
 
 
-@media screen and (min-width: 32em) {
+@media screen and (min-width: 24em) {
   .ultratitle {
-    font-size: var(--font-5);
+    font-size: var(--font-6);
   }
   .title {
-    font-size: var(--font-4);
+    font-size: var(--font-5);
   }
   .subtitle {
     font-size: var(--font-2);
@@ -542,13 +542,13 @@ td {
 
 @media screen and (min-width: 48em) {
   .ultratitle {
-    font-size: var(--font-6);
+    font-size: var(--font-7);
   }
   .title {
-    font-size: var(--font-5);
+    font-size: var(--font-6);
   }
   .subtitle {
-    font-size: var(--font-3);
+    font-size: var(--font-5);
   }
   .eyebrow {
     font-size: var(--font-4);

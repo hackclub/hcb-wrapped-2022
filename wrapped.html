@@ -57,6 +57,7 @@
 
         div.content {
             text-align: center;
+            cursor: default;
         }
 
         div.bg {
@@ -110,6 +111,11 @@
         div.progress > div.meter {
             height: 100%;
             background: var(--red);
+            --color-1: #ec3750;
+            --color-2: #a72032;
+            background-position-x: 10px;
+            --width: 20px;
+            background: repeating-linear-gradient(110deg, #ec3750 calc(var(--offset) + 0px), #ec3750 calc(var(--offset) + var(--width)), #cb2b41 calc(var(--offset) + var(--width)), #cb2b41 calc(var(--offset) + calc(var(--width) * 2)));
             width: min(max(calc(var(--value) * 100%), 60px), 100%);
             transition: width 0.5s;
             border-radius: 16px;

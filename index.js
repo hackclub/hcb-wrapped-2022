@@ -10,7 +10,7 @@ window.html = ((strings, ...values) => {
     let html = '';
     strings.forEach((string, i) => {
         html += string;
-        if (values[i]?.replace) html += values[i].replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))
+        if (values[i]?.replace || values[i]?.toString) html += values[i].toString().replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))
     });
     return html;
 });
@@ -80,7 +80,7 @@ export class Wrapped {
 
     nextScreen () {
         this.currentScreen++;
-        const value = this.screens[this.currentScreen](this.metrics);
+        const value = this.screens[this.currentScreen](this.metrics, this.data);
         dom['.content'].innerHTML = value;
     }
 
@@ -91,7 +91,7 @@ export class Wrapped {
     #reactiveUpdate (value) {
         const percentage = value ?? Math.max(Math.floor((this.#exponentialCurve((Date.now() - this.orgUpdateMs) / 100, 100 / this.orgSlugs.length) + (this.orgsCompleted) / this.orgSlugs.length * 100) * 1) / 1, 1);
         dom['#loading-value'].innerText = percentage;
-        dom['.meter'].setAttribute('style', `--value: ${percentage / 100};`);
+        dom['.meter'].setAttribute('style', `--value: ${percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
 
     #indexOrg (orgData, transactions) {
@@ -127,7 +127,7 @@ console.log(transactions);
     async fetch () {
         this.orgUpdateMs = Date.now();
 
-        const interval = setInterval(() => this.#reactiveUpdate(), 200);
+        const interval = setInterval(() => this.#reactiveUpdate(), 50);
 
         const asyncFns = [];
 
@@ -183,9 +183,19 @@ console.log(transactions);
             <h3 class="eyebrow eyebrow-child">Welcome, <span style="color: var(--slate);">${this.data.name}</span>!</h3>
         `;
 
+        let continued = false;
+        let continueFunctionName = 'start_' + Math.random().toString(36).substring(3, 8);
+        window[continueFunctionName] = () => {
+            if (continued) return;
+            continued = true;
+            this.nextScreen();
+        }
+
         dom['.eyebrow:not(.eyebrow-child)'].parentElement.innerHTML += html`
-            <button style="margin-top: var(--spacing-3);" class="btn-lg">Start →</button>
+            <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${continueFunctionName}()">Start →</button>
         `;
+
+        this.#wrap();
 
         console.log(this.shareLink);
     }
@@ -209,18 +219,19 @@ console.log(transactions);
 const searchParams = new URLSearchParams(window.location.search);
 
 const screens = {
-    loading ({ name }) {
+    loading ({ amountSpent, orgs, mostSpentOrg }) {
+        console.log(arguments);
+        console.log(amountSpent, orgs);
         return html`
-            <h1 class="title"><span style="color: var(--red);">Bank</span> Wrapped</h1>
-            <h2 class="headline" style="margin-bottom: var(--spacing-5);">🏦 🎁 2022</h2>
-            <div class="progress" style="margin-bottom: var(--spacing-2);">
-                <div class="meter" style="--value:1;">
-                    <p>
-                        <span id="loading-value">100</span>%
-                    </p>
-                </div>
-            </div>
-            <h3 class="eyebrow">Welcome, <span style="color: var(--slate);">${name}</span>!</h3>
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                In 2022, you spent <span style="color: var(--red);">$${(amountSpent / 100).toLocaleString()}</span> across ${orgs} organizations.
+            </h1>
+
+            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+                Most of it was on <span style="color: var(--red);">${mostSpentOrg}</span>.
+            </h2>
+
+            <small style="font-size: var(--font-2); color: #8492a6;">(click anywhere to proceed)</small>
         `;
     }
 }
