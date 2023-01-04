@@ -65,6 +65,22 @@ export class API {
             }
         }
 
+        const get_raw = (url, defaultHeaders, target) => {
+            return async (headers) => {
+            	if (rateLimitHandler instanceof Function) {
+            		let output = rateLimitHandler();
+            		if (output instanceof Promise) await output;
+            	}
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: Util.defaults(defaultHeaders, headers)
+                });
+                const text = await response.text();
+                const parsed = outputParser(text);
+                return { parsed, raw: response };
+            }
+        }
+
         const head = (url, defaultHeaders) => {
             return async (headers) => {
             	if (rateLimitHandler instanceof Function) {
@@ -173,6 +189,7 @@ export class API {
                     const url = baseUrl + '/' + path.join('/');
                     if (prop == '_url') return baseUrl + '/' + target.path.join('/');
                     if (prop == 'get') return get(baseUrl + '/' + target.path.join('/'), Util.determineValues(headers));
+                    if (prop == 'get_raw') return get_raw(baseUrl + '/' + target.path.join('/'), Util.determineValues(headers));
                     if (prop == 'head') return head(baseUrl + '/' + target.path.join('/'), Util.determineValues(headers));
                     if (prop == 'post') return post(baseUrl + '/' + target.path.join('/'), Util.determineValues(headers));
                     if (prop == 'put') return put(baseUrl + '/' + target.path.join('/'), Util.determineValues(headers));
@@ -212,6 +229,7 @@ export class API {
 export default new API({
     baseUrl: 'https://bank.hackclub.com/api',
     headers: {
-        'Bank-Wrapped': 'true'
+        'Bank-Wrapped': 'true',
+        'Access-Control-Request-Headers': 'X-Page, X-Next-Page, X-Total-Pages'
     }
 });

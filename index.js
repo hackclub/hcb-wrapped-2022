@@ -6,6 +6,8 @@ window.dom = new Proxy({ fn: document.querySelector.bind(document) }, {
     }
 });
 
+window.wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 window.html = ((strings, ...values) => {
     let html = '';
     strings.forEach((string, i) => {
@@ -23,6 +25,10 @@ window.fn = (fn) => {
     return key;
 }
 
+Number.prototype.$range = function () {
+    return Array.from({ length: this }, (_, i) => i + 1);
+}
+
 const params = object => '?' + Object.entries(object).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
 
 async function flattenPotentialPromise (promise) {
@@ -30,10 +36,104 @@ async function flattenPotentialPromise (promise) {
     return promise;
 }
 
-async function pager (getPage, endCriteria, handlePages, upperLimit) {
+function altFetch (url) {
+    /**
+     * I have to use XMLHttpRequest 💀
+     * https://stackoverflow.com/questions/43344819/reading-response-headers-with-fetch-api
+     */
+    return new Promise((resolve, reject) => {
+
+        function responseListener () {
+            console.log(this.responseText);
+            console.log(this.getAllResponseHeaders());
+        }
+        
+        const req = new XMLHttpRequest();
+        req.addEventListener("load", responseListener);
+        req.open("GET", url);
+        req.send();
+    });
+}
+
+window.altFetch = altFetch;
+
+async function strategicFetcher (orgs, globalYear = new Date().getFullYear()) {
+    async function fetchOrg (org) {
+        async function fetchPage (page) {
+            const { parsed, raw: { headers } } = await api.v3.organizations[org].transactions.searchParams({ per_page: 150, page, expand: 'card_charge' }).get_raw()
+            const pageNumber = headers.get('X-Page');
+            const nextPage = headers.get('X-Next-Page');
+            const totalPages = headers.get('X-Total-Pages');
+
+            return { data: parsed, pageNumber, nextPage, totalPages };
+        }
+
+        let output = [];
+        let stack = [];
+        let completed = false;
+        
+        const { data, totalPages } = await fetchPage(1);
+        output.push(...data);
+
+        if (totalPages == 1) return output;
+
+        function pushStack (page) {
+            stack.push(async () => {
+                if (completed) return [];
+                const { data, nextPage, totalPages } = await fetchPage(page);
+
+                if (nextPage == null) completed = true;
+
+                if (data.filter(tx => {
+                    let year = new Date(tx.date).getFullYear();
+                    return year < globalYear;
+                }).length != 0 || !data.length) completed = true;
+
+                return data;
+            });
+        }
+
+        for (let i = 2; i <= totalPages; i++) {
+            pushStack(i);
+        }
+
+        for (let i = 0; i < stack.length; i += 5) {
+
+            const results = await Promise.all([
+                ...(stack[i] ? [stack[i]()] : []),
+                ...(stack[i + 1] ? [stack[i + 1]()] : []),
+                ...(stack[i + 2] ? [stack[i + 2]()] : []),
+                ...(stack[i + 3] ? [stack[i + 2]()] : []),
+                ...(stack[i + 4] ? [stack[i + 2]()] : [])
+            ]);
+
+            const data = results.flat();
+            output.push(...data);
+            console.log('pushed to output');
+        }
+
+        return output;
+    }
+
+    const output = await Promise.all(orgs.map(fetchOrg));
+    return output;
+}
+
+window.strategicFetcher = strategicFetcher;
+
+async function pager (getPage, endCriteria, handlePages, upperLimit, onError) {
     const pages = [];
     for (let i = 0; !upperLimit || i < upperLimit; i++) {
-        const pageData = await flattenPotentialPromise(getPage(i + 1));
+        let pageData;
+        try {
+            pageData = await flattenPotentialPromise(getPage(i + 1));
+        } catch (err) {
+            try {
+                pageData = await flattenPotentialPromise(getPage(i + 1));
+            } catch (err) {
+                onError(err);
+            }
+        }
         pages.push(pageData);
         const done = endCriteria(pageData);
         if (done) break;
@@ -63,11 +163,14 @@ export class Wrapped {
             collaborators: [],
             global_transactions_cents: 0,
             keywords: [],
+            transactions: [],
             image_url: '',
             orgs: []
         };
 
         this.metrics = {};
+
+        this.allowClickNext = false;
 
         this.orgsCompleted = 0;
         this.isLargeOrg = false;
@@ -75,13 +178,40 @@ export class Wrapped {
     }
 
     get shareLink () {
-        return `https://hack.af/wrapped?q=${this.userId.substring(4)}_${this.orgSlugs.map(slug => slug.substring(4)).join('_')}_${this.data.name ? encodeURIComponent(this.data.name.split('_').join(' ')) : '0'}`;
+        try {
+            return `https://hack.af/wrapped?q=${this.userId.substring(4)}_${this.orgSlugs.map(slug => slug.substring(4)).join('_')}_${this.data.name ? encodeURIComponent(this.data.name.split('_').join(' ')) : '0'}`;
+        } catch (err) {
+            return 'https://hack.af/wrapped';
+        }
     }
 
-    nextScreen () {
+    async nextScreen () {
         this.currentScreen++;
         const value = this.screens[this.currentScreen](this.metrics, this.data);
-        dom['.content'].innerHTML = value;
+        const tempId = 'id' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        if (dom['.content .transition-in'] && this.currentScreen !== this.screens.length - 1) {
+            dom['.content .transition-in'].classList.add('transitioned-out');
+            await wait(400);
+        }
+        if (this.currentScreen !== this.screens.length - 1) dom['.content'].innerHTML = /*html*/`
+            <div class="transition-in" id="${tempId}">
+                ${value}
+            </div>
+        `;
+        else dom['.content'].innerHTML = /*html*/`
+            <div class=id="${tempId}">
+                ${value}
+            </div>
+        `;
+        dom['.content'].innerHTML += /*html*/`
+            <div class="transition-in" style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 30px; color: var(--muted);" id="${tempId}2">
+                →
+            </div>
+        `;
+        wait(3000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
+        setTimeout(() => {
+            dom[`#${tempId}`].classList.add('transitioned-in');
+        }, 10);
     }
 
     #exponentialCurve (x, cap = 100) {
@@ -89,7 +219,18 @@ export class Wrapped {
     }
 
     #reactiveUpdate (value) {
-        const percentage = value ?? Math.max(Math.floor((this.#exponentialCurve((Date.now() - this.orgUpdateMs) / 100, 100 / this.orgSlugs.length) + (this.orgsCompleted) / this.orgSlugs.length * 100) * 1) / 1, 1);
+        const percentage = value ?? Math.max(
+            Math.floor(
+                (
+                    this.#exponentialCurve(
+                        (Date.now() - this.orgUpdateMs) / 100,
+                        100 / this.orgSlugs.length
+                    )
+                    + (this.orgsCompleted) / this.orgSlugs.length * 100)
+                    * 1
+            ) / 1,
+            1
+        );
         dom['#loading-value'].innerText = percentage;
         dom['.meter'].setAttribute('style', `--value: ${percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
@@ -103,6 +244,7 @@ export class Wrapped {
         this.data.global_transactions_cents += transactions.reduce((acc, tx) => acc + Math.abs(tx.amount_cents), 0);
         
         for (const transaction of transactions) {
+            this.data.transactions.push(transaction);
             this.data.keywords.push(...transaction.memo.toLowerCase().split('').filter(char => `abcdefghijklmnopqrstuvwxyz1234567890_- `.includes(char)).join('').split(' ').filter(k => k).filter(k => ![
                 'the',
                 'of',
@@ -135,14 +277,20 @@ console.log(transactions);
             asyncFns.push((async () => {
 
                 this.isLargeOrg = org == 'hq';
-                const [orgData, transactions] = await Promise.all([
+                const [orgData, [transactions]] = await Promise.all([
                     await api.v3.organizations[org].get(),
-                    await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 500, page: page, expand: 'card_charge' }).get()), page => {
-                        return page.filter(tx => {
-                            let year = new Date(tx.date).getFullYear();
-                            return year < this.year;
-                        }).length != 0 || !page.length;
-                    }, pages => pages.flat())
+                    strategicFetcher([org])
+                    // await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 150, page: page, expand: 'card_charge' }).get()), page => {
+                    //     return page.filter(tx => {
+                    //         let year = new Date(tx.date).getFullYear();
+                    //         return year < this.year;
+                    //     }).length != 0 || !page.length;
+                    // }, pages => pages.flat(), null, () => {
+                    //     clearInterval(interval);
+                    //     this.#reactiveUpdate(100);
+                    //     this.#reactiveUpdate(1);
+                    //     throw new Error('Request failed twice');
+                    // })
                 ]);
                 this.orgsCompleted++;
                 // this.orgUpdates = 0;
@@ -188,6 +336,7 @@ console.log(transactions);
         window[continueFunctionName] = () => {
             if (continued) return;
             continued = true;
+            this.allowClickNext = true;
             this.nextScreen();
         }
 
@@ -209,19 +358,50 @@ console.log(transactions);
             transactions_cents: this.data.global_transactions_cents,
             top_keywords: this.data.keywords_object,
             name: this.data.name,
+            spendingPercentile: (transactions => {
+                const cols = {};
+                const collaborators = this.data.collaborators.length;
+                for (const tx of transactions) {
+                    if (!cols[tx.card_charge.user.id]) cols[tx.card_charge.user.id] = 0;
+                    if (tx.card_charge.user.id !== this.userId) cols[tx.card_charge.user.id] += Math.abs(tx.amount_cents);
+                }
+                const amounts = ' '.repeat(collaborators - 1).split('').map((_, i) => Object.values(cols)[i]).map(a => a == undefined ? 0 : a);
+                const selfAmount = transactions.filter(tx => tx.card_charge.user.id == this.userId).reduce((acc, tx) => acc + Math.abs(tx.amount_cents), 0);
+
+                const percentile = (amounts.filter(a => a > selfAmount).length / collaborators) * 100;
+                return percentile;
+
+            })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
+            busiestDay: (transactions => {
+                const days = {};
+                for (const tx of transactions) {
+                    const day = new Date(tx.date).getDay();
+                    if (!days[day]) days[day] = 0;
+                    days[day]++;
+                }
+                return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
+            })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
+            selfBusiestDay: (transactions => {
+                const days = {};
+                for (const tx of transactions) {
+                    const day = new Date(tx.date).getDay();
+                    if (!days[day]) days[day] = 0;
+                    days[day]++;
+                }
+                return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
+            })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == this.userId)),
             percent: this.data.percent
         };
 
+        console.log(this.metrics, 'a')
         return this.metrics;
     }
 }
 
 const searchParams = new URLSearchParams(window.location.search);
 
-const screens = {
-    loading ({ amountSpent, orgs, mostSpentOrg }) {
-        console.log(arguments);
-        console.log(amountSpent, orgs);
+const dataScreens = {
+    totalSpent ({ amountSpent, orgs, mostSpentOrg }) {
         return html`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 In 2022, you spent <span style="color: var(--red);">$${(amountSpent / 100).toLocaleString()}</span> across ${orgs} organizations.
@@ -233,12 +413,57 @@ const screens = {
 
             <small style="font-size: var(--font-2); color: #8492a6;">(click anywhere to proceed)</small>
         `;
+    },
+    splurgeDay ({ busiestDay, selfBusiestDay }) {
+        if (busiestDay == selfBusiestDay) return html`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                You and your teams spent the most on <span style="color: var(--red);">${busiestDay}s</span>.
+            </h1>
+        `;
+        return html`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                Your teams spent the most on <span style="color: var(--red);">${busiestDay}s</span>, but you spent the most on <span style="color: var(--red);">${selfBusiestDay}s</span>.
+            </h1>
+        `;
+    },
+    percentile ({ spendingPercentile }) {
+        return html`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                You spent more than <span style="color: var(--red);">${Math.round(spendingPercentile)}%</span> of your teammates.
+            </h1>
+        `;
     }
 }
 
+const endScreens = {
+    share () {
+        return html`
+            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+                We hope you enjoyed this year's <span style="color: var(--red);">Bank Wrapped</span>. Here's your link, if you'd like to share it.
+            </h2>
+
+            <small style="font-size: var(--font-2); color: #8492a6;">(click anywhere to copy)</small>
+        `;
+    },
+    copied () {
+        return html`
+            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+                We hope you enjoyed this year's <span style="color: var(--red);">Bank Wrapped</span>. Here's your link, if you'd like to share it.
+            </h2>
+
+            <small style="font-size: var(--font-2); color: var(--red);">copied to clipboard!</small>
+        `;
+    }
+}
+
+const screens = {
+    ...Object.values(dataScreens).sort(() => Math.random() - 0.5),
+    ...endScreens
+}
+
+if (!searchParams.get('user_id') || !searchParams.get('org_ids')) location.replace('https://bank.hackclub.com/wrapped');
 const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens);
 console.log(myWrapped.shareLink);
-
 
 function run () {
     myWrapped.fetch().then(() => {
