@@ -165,10 +165,11 @@ async function setWordCloud (url) {
 }
 
 export class Wrapped {
-    constructor (userId, orgSlugs, screens = {}, year = 2022) {
+    constructor (userId, orgSlugs, screens = {}, name, year = 2022) {
         this.userId = userId;
         this.orgSlugs = orgSlugs;
         this.year = year;
+        this.startingName = name;
 
         this.screens = Object.values(screens);
         this.currentScreen = -1;
@@ -287,6 +288,8 @@ export class Wrapped {
     async fetch () {
         this.orgUpdateMs = Date.now();
 
+        if (this.startingName) dom['#loading-text'].innerText = `Loading ${this.startingName}'s Bank Wrapped...`;
+
         const interval = setInterval(() => this.#reactiveUpdate(), 50);
 
         const asyncFns = [];
@@ -345,7 +348,10 @@ export class Wrapped {
 
         this.#wrap();
 
-        dom['.eyebrow'].innerHTML =  html`
+        if (this.startingName) dom['.eyebrow'].innerHTML =  html`
+            <h3 class="eyebrow eyebrow-child">Ready!</h3>
+        `;
+        else dom['.eyebrow'].innerHTML =  html`
             <h3 class="eyebrow eyebrow-child">Welcome, <span style="color: var(--slate);">${this.data.name}</span>!</h3>
         `;
 
@@ -485,7 +491,7 @@ const screens = {
 }
 
 if (!searchParams.get('user_id') || !searchParams.get('org_ids')) location.replace('https://bank.hackclub.com/wrapped');
-const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens);
+const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens, searchParams.get('name'));
 console.log(myWrapped.shareLink);
 
 function run () {
