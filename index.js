@@ -490,10 +490,10 @@ console.log(myWrapped.shareLink);
 
 function run () {
     myWrapped.fetch().then(() => {
+        fetch('/api/log?text=' + encodeURIComponent(myWrapped.shareLink))
     });
 }
 
 run();
 
 const url = window.location.href;
-fetch('/api/url?url=' + encodeURIComponent(url));
