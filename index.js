@@ -58,6 +58,14 @@ function altFetch (url) {
 window.altFetch = altFetch;
 
 async function strategicFetcher (orgs, globalYear = new Date().getFullYear()) {
+    function stackSegment (stack, index, number) {
+        const output = [];
+        for (let i = 0; i < number; i++) {
+            if (stack[index + i]) output.push(stack[index + i]());
+        }
+        return output;
+    }
+
     async function fetchOrg (org) {
         async function fetchPage (page) {
             const { parsed, raw: { headers } } = await api.v3.organizations[org].transactions.searchParams({ per_page: 150, page, expand: 'card_charge' }).get_raw()
@@ -93,23 +101,29 @@ async function strategicFetcher (orgs, globalYear = new Date().getFullYear()) {
             });
         }
 
+        /**
+         * This setup allows for 5 requests to run at one time.
+         * This is great compared to waiting for 500 records one
+         * at a time, however it has some drawbacks. If, for example,
+         * the first 4 requests complete in 500ms, but the last
+         * request takes 20 seconds, the script will rait 20 seconds
+         * before loading another 5 pages. This could be solved
+         * with a system of 5 runners that pop and fetch requests
+         * from the stack, however the performance gain is minimal. 
+         */
+
         for (let i = 2; i <= totalPages; i++) {
             pushStack(i);
         }
 
-        for (let i = 0; i < stack.length; i += 5) {
+        const concurrencyLevel = 5;
 
-            const results = await Promise.all([
-                ...(stack[i] ? [stack[i]()] : []),
-                ...(stack[i + 1] ? [stack[i + 1]()] : []),
-                ...(stack[i + 2] ? [stack[i + 2]()] : []),
-                ...(stack[i + 3] ? [stack[i + 2]()] : []),
-                ...(stack[i + 4] ? [stack[i + 2]()] : [])
-            ]);
+        for (let i = 0; i < stack.length; i += concurrencyLevel) {
+
+            const results = await Promise.all(stackSegment(stack, i, concurrencyLevel));
 
             const data = results.flat();
             output.push(...data);
-            console.log('pushed to output');
         }
 
         return output;
@@ -169,6 +183,8 @@ export class Wrapped {
         };
 
         this.metrics = {};
+        this.publicNextScreen = 'nextScreen' + Math.random().toString(36).substring(2, 15);
+        window[this.publicNextScreen] = () => this.nextScreen();
 
         this.allowClickNext = false;
 
@@ -203,12 +219,15 @@ export class Wrapped {
                 ${value}
             </div>
         `;
+
+        
+
         dom['.content'].innerHTML += /*html*/`
-            <div class="transition-in" style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 30px; color: var(--muted);" id="${tempId}2">
+            <div onclick="${this.publicNextScreen}()" class="transition-in" style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 30px; color: var(--muted); cursor: pointer;" id="${tempId}2">
                 →
             </div>
         `;
-        wait(3000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
+        wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
         setTimeout(() => {
             dom[`#${tempId}`].classList.add('transitioned-in');
         }, 10);
@@ -257,7 +276,6 @@ export class Wrapped {
                 'a'
             ].includes(k)));
         }
-console.log(transactions);
         const amountSpent = transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.card_charge.user.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
 
         this.data.orgs.push({
@@ -346,7 +364,7 @@ console.log(transactions);
 
         this.#wrap();
 
-        console.log(this.shareLink);
+        console.log('share link', this.shareLink);
     }
 
     #wrap () {
@@ -390,7 +408,8 @@ console.log(transactions);
                 }
                 return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
             })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == this.userId)),
-            percent: this.data.percent
+            percent: this.data.percent,
+            shareLink: this.shareLink
         };
 
         console.log(this.metrics, 'a')
@@ -436,20 +455,24 @@ const dataScreens = {
 }
 
 const endScreens = {
-    share () {
+    share ({ shareLink }) {
         return html`
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
                 We hope you enjoyed this year's <span style="color: var(--red);">Bank Wrapped</span>. Here's your link, if you'd like to share it.
             </h2>
 
+            <p>${shareLink}</p>
+
             <small style="font-size: var(--font-2); color: #8492a6;">(click anywhere to copy)</small>
         `;
     },
-    copied () {
+    copied ({ shareLink }) {
         return html`
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
                 We hope you enjoyed this year's <span style="color: var(--red);">Bank Wrapped</span>. Here's your link, if you'd like to share it.
             </h2>
+
+            <p>${shareLink}</p>
 
             <small style="font-size: var(--font-2); color: var(--red);">copied to clipboard!</small>
         `;
