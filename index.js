@@ -288,7 +288,7 @@ export class Wrapped {
     async fetch () {
         this.orgUpdateMs = Date.now();
 
-        if (this.startingName) dom['#loading-text'].innerText = `Loading ${this.startingName}'s Bank Wrapped...`;
+        if (this.startingName) dom['#loading-text'].innerHTML = html`Loading <span style="color: var(--slate);">${this.startingName}</span>'s Bank Wrapped...`;
 
         const interval = setInterval(() => this.#reactiveUpdate(), 50);
 
