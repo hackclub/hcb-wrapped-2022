@@ -36,26 +36,6 @@ async function flattenPotentialPromise (promise) {
     return promise;
 }
 
-function altFetch (url) {
-    /**
-     * I have to use XMLHttpRequest 💀
-     * https://stackoverflow.com/questions/43344819/reading-response-headers-with-fetch-api
-     */
-    return new Promise((resolve, reject) => {
-
-        function responseListener () {
-            console.log(this.responseText);
-            console.log(this.getAllResponseHeaders());
-        }
-        
-        const req = new XMLHttpRequest();
-        req.addEventListener("load", responseListener);
-        req.open("GET", url);
-        req.send();
-    });
-}
-
-window.altFetch = altFetch;
 
 async function strategicFetcher (orgs, globalYear = new Date().getFullYear()) {
     function stackSegment (stack, index, number) {
