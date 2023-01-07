@@ -147,7 +147,7 @@ export class Wrapped {
 
     get shareLink () {
         try {
-            return `https://hack.af/wrapped?q=${this.userId.substring(4)}_${this.orgSlugs.map(slug => slug.substring(4)).join('_')}_${this.data.name ? encodeURIComponent(this.data.name.split('_').join(' ')) : '0'}`;
+            return `https://hack.af/wrapped?q=${this.userId.substring(4)}_${this.orgSlugs.map(slug => slug.substring(4)).join('_')}_${this.data.name ? encodeURIComponent(this.data.name.split('_').join(' ').split(' ')[0]) : '0'}`;
         } catch (err) {
             return 'https://hack.af/wrapped';
         }
@@ -177,7 +177,7 @@ export class Wrapped {
             </div>
         `;
 
-        dom['.content'].innerHTML += /*html*/`
+        if (!lastScreen) dom['.content'].innerHTML += /*html*/`
             <div class="transition-in" style="text-align: center; font-weight: bold; font-size: 30px; color: var(--muted);" id="${tempId}2">
                 <span onclick="${this.publicNextScreen}()" style="margin: -20px; padding: 20px; box-sizing: border-box; cursor: pointer; display: inline-block; line-height: 28px;    ">→</span>
             </div>
