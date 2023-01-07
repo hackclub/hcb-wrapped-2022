@@ -390,7 +390,7 @@ const dataScreens = {
     async wordCloud ({ top_keywords }, _, onRender) {
         const keywordsList = Object.entries(top_keywords).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
 
-        const res = await fetch('https://quickchart.io/wordcloud?' + Object.entries({
+        const rawRes = fetch('https://quickchart.io/wordcloud?' + Object.entries({
             text: keywordsList.slice(0, 500).join(' '),
             colors: JSON.stringify(`#ec3750
 #ff8c37
@@ -402,9 +402,9 @@ const dataScreens = {
             nocache: Date.now()
         }).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&'));
 
-        const svg = await res.text();
-
-        onRender(() => {
+        onRender(async () => {
+            const res = await rawRes;
+            const svg = await res.text();
             dom['.wordcloud'].innerHTML = svg;
             dom['.wordcloud'].style.fontWeight = 'bold';
             dom['.wordcloud svg'].setAttribute('font-family', 'Phantom Sans');
@@ -427,27 +427,49 @@ const dataScreens = {
 const endScreens = {
     tx ({ transactions_cents }) {
         return html`
-            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
-                You and your teams transacted <span style="color: var(--red);">$${(transactions_cents / 100).toLocaleString()}</span>, making up <span style="color: var(--red);">${Math.round(transactions_cents / 3_086_742_14 * 10000) / 100}%</span> of transactions on Bank this year.
-            </h2>
+        <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+            You and your teams transacted <span style="color: var(--red);">$${(transactions_cents / 100).toLocaleString()}</span> in 2022.
+        </h1>
+
+        <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+            That's about <span style="color: var(--red);">${Math.round(transactions_cents / 3_086_742_14 * 10000) / 100}%</span> of all transactions in 2022.
+        </h2>
         `
     },
-    share ({ shareLink }) {
-        return html`
+    share ({ shareLink, name }) {
+        return /*html*/`
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
                 We hope you enjoyed this year's <span style="color: var(--red);">Bank Wrapped</span>. Here's your link, if you'd like to share it.
             </h2>
 
-            <p>${shareLink}</p>
-        `;
-    },
-    copied ({ shareLink }) {
-        return html`
-            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
-                We hope you enjoyed this year's <span style="color: var(--red);">Bank Wrapped</span>. Here's your link, if you'd like to share it.
-            </h2>
-
-            <p>${shareLink}</p>
+            ${navigator.share ? html`
+                <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${fn(() => {
+                    navigator.share({
+                        title: 'Bank Wrapped',
+                        text: `Check out ${name}'s Bank Wrapped!`,
+                        url: shareLink,
+                    })
+                })}()">Share</button>
+            ` : html`
+                <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${fn(async e => {
+                    try {
+                        await navigator.clipboard.writeText(shareLink);
+                        e.innerText = 'Copied!';
+                        e.setAttribute('disabled', true);
+                    } catch (err) {
+                        try {
+                            e.innerText = shareLink;
+                            e.select();
+                            document.execCommand('copy');
+                            e.innerText = 'Copied!';
+                        } catch (err) {
+                            e.innerText = 'Failed to copy';
+                        }
+                    } finally {
+                        alert(e.getAttribute('onclick'));              
+                    }
+                })}(this)">Copy Link</button>
+            `}
         `;
     }
 }
