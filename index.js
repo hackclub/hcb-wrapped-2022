@@ -162,12 +162,11 @@ export class Wrapped {
             </div>
         `;
         else dom['.content'].innerHTML = /*html*/`
-            <div class=id="${tempId}">
+            <div id="${tempId}">
                 ${value}
             </div>
         `;
 
-        
 
         dom['.content'].innerHTML += /*html*/`
             <div onclick="${this.publicNextScreen}()" class="transition-in" style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 30px; color: var(--muted); cursor: pointer;" id="${tempId}2">
