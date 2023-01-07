@@ -428,7 +428,7 @@ const endScreens = {
     tx ({ transactions_cents }) {
         return html`
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
-                Over the last year, you've transacted <span style="color: var(--red);">$${transactions_cents / 100}</span>, making up <span style="color: var(--red);">${transactions_cents / 3_086_742_14  * 100}%</span> of transactions on Bank this year.
+                You and your teams transacted <span style="color: var(--red);">$${(transactions_cents / 100).toLocaleString()}</span>, making up <span style="color: var(--red);">${Math.round(transactions_cents / 3_086_742_14 * 10000) / 100}%</span> of transactions on Bank this year.
             </h2>
         `
     },
