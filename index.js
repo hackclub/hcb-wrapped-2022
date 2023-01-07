@@ -3,6 +3,10 @@ import api from './api.js';
 // Window helpers
 
 window.dom = new Proxy({ fn: document.querySelector.bind(document) }, {
+    /**
+     * Get an element on the page
+     * @returns {HTMLElement}
+     */
     get ({ fn }, target) {
         return target == '$' ? fn : fn(target);
     }
@@ -120,6 +124,7 @@ export class Wrapped {
 
         this.screens = Object.values(screens);
         this.currentScreen = -1;
+        this.audio = new Audio("/bg-music.mp3");
 
         this.data = {
             collaborators: [],
@@ -150,10 +155,17 @@ export class Wrapped {
 
     async nextScreen () {
         this.currentScreen++;
-        const value = await flattenPotentialPromise(this.screens[this.currentScreen](this.metrics, this.data));
+
+        let callback;
+        function setCallback (cb) {
+            callback = cb;
+        }
+
+        const value = await flattenPotentialPromise(this.screens[this.currentScreen](this.metrics, this.data, setCallback));
         const tempId = 'id' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         if (dom['.content .transition-in'] && this.currentScreen !== this.screens.length - 1) {
             dom['.content .transition-in'].classList.add('transitioned-out');
+            dom['.content .transition-in:not(.transitioned-out)'].classList.add('transitioned-out');
             await wait(400);
         }
         
@@ -164,13 +176,15 @@ export class Wrapped {
         `;
 
         dom['.content'].innerHTML += /*html*/`
-            <div onclick="${this.publicNextScreen}()" class="transition-in" style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 30px; color: var(--muted); cursor: pointer;" id="${tempId}2">
-                →
+            <div class="transition-in" style="text-align: center; font-weight: bold; font-size: 30px; color: var(--muted);" id="${tempId}2">
+                <span onclick="${this.publicNextScreen}()" style="margin: -20px; padding: 20px; box-sizing: border-box; cursor: pointer; display: inline-block; line-height: 28px;    ">→</span>
             </div>
         `;
 
         wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
         wait(10).then(() => dom[`#${tempId}`].classList.add('transitioned-in'));
+
+        wait(10).then(() => callback?.());
     }
 
     #exponentialCurve (x, cap = 100) {
@@ -276,6 +290,8 @@ export class Wrapped {
         window[continueFunctionName] = () => {
             if (continued) return;
             continued = true;
+            this.audio.volume = 0.7;
+            this.audio.play();
             this.allowClickNext = true;
             this.nextScreen();
         }
@@ -283,8 +299,6 @@ export class Wrapped {
         dom['.eyebrow:not(.eyebrow-child)'].parentElement.innerHTML += html`
             <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${continueFunctionName}()">Start →</button>
         `;
-
-        this.#wrap();
 
         console.log('share link', this.shareLink);
     }
@@ -352,7 +366,6 @@ const dataScreens = {
                 Most of it was on <span style="color: var(--red);">${mostSpentOrg}</span>.
             </h2>
 
-            <small style="font-size: var(--font-2); color: #8492a6;">(click anywhere to proceed)</small>
         `;
     },
     splurgeDay ({ busiestDay, selfBusiestDay }) {
@@ -374,7 +387,7 @@ const dataScreens = {
             </h1>
         `;
     },
-    async wordCloud ({ top_keywords }) {
+    async wordCloud ({ top_keywords }, _, onRender) {
         const keywordsList = Object.entries(top_keywords).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
 
         const res = await fetch('https://quickchart.io/wordcloud?' + Object.entries({
@@ -390,13 +403,35 @@ const dataScreens = {
         }).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&'));
 
         const svg = await res.text();
-        dom['.wordcloud'].innerHTML = svg;
-        dom['.wordcloud'].style.fontWeight = 'bold';
-        dom['.wordcloud svg'].setAttribute('font-family', 'Phantom Sans');
+
+        onRender(() => {
+            dom['.wordcloud'].innerHTML = svg;
+            dom['.wordcloud'].style.fontWeight = 'bold';
+            dom['.wordcloud svg'].setAttribute('font-family', 'Phantom Sans');
+            dom['.wordcloud svg'].setAttribute('viewBox', '0 0 600 600');
+            dom['.wordcloud svg'].setAttribute('width', '100%');
+            dom['.wordcloud svg'].removeAttribute('height');
+        });
+
+        return html`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                Here's your year on Bank in just a few words.
+            </h1>
+
+            <div class="wordcloud">
+            </div>
+        `
     }
 }
 
 const endScreens = {
+    tx ({ transactions_cents }) {
+        return html`
+            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+                Over the last year, you've transacted <span style="color: var(--red);">$${transactions_cents / 100}</span>, making up <span style="color: var(--red);">${transactions_cents / 3_086_742_14  * 100}%</span> of transactions on Bank this year.
+            </h2>
+        `
+    },
     share ({ shareLink }) {
         return html`
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
@@ -404,8 +439,6 @@ const endScreens = {
             </h2>
 
             <p>${shareLink}</p>
-
-            <small style="font-size: var(--font-2); color: #8492a6;">(click anywhere to copy)</small>
         `;
     },
     copied ({ shareLink }) {
@@ -415,14 +448,12 @@ const endScreens = {
             </h2>
 
             <p>${shareLink}</p>
-
-            <small style="font-size: var(--font-2); color: var(--red);">copied to clipboard!</small>
         `;
     }
 }
 
 const screens = {
-    ...Object.values(dataScreens).sort(() => Math.random() - 0.5),
+    ...Object.values(dataScreens).sort(() => Math.random() - 0.5).reduce((a, b) => ({ ...a,  [Math.floor(Math.random() * 10000) + '']: b }), {}),
     ...endScreens
 }
 
@@ -437,5 +468,3 @@ function run () {
 }
 
 run();
-
-const url = window.location.href;

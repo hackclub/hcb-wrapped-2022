@@ -5,6 +5,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./hc.css"></link>
+    <link rel="favicon" href="./favicon.png"></link>
+    <link rel="shortcut icon" href="./favicon.png"></link>
+    <link rel="apple-touch-icon" href="./favicon.png"></link>
+    <link rel="icon" href="./favicon.png"></link>
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Bank Wrapped</title>
     <style>
         * {
@@ -46,7 +51,7 @@
             align-items: center;
             border-radius: 16px;
             box-shadow: 0px 0px 20px 0px #3403095e;
-            width: calc(100vw - 100px);
+            width: calc(100vw - 50px);
             transition: all 0.6s;
             min-width: 300px;
             max-width: 600px;
@@ -54,6 +59,15 @@
             top: 0px;
             left: 0px;
             z-index: 20;
+        }
+
+        @media screen and (max-width: 600px) {
+            div.main {
+                padding-top: var(--spacing-5);
+                padding-bottom: var(--spacing-5);
+                padding-left: var(--spacing-4);
+                padding-right: var(--spacing-4);
+            }
         }
 
         div.content {
