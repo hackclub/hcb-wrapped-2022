@@ -156,6 +156,8 @@ export class Wrapped {
     async nextScreen () {
         this.currentScreen++;
 
+        const lastScreen = this.currentScreen == this.screens.length - 1;
+
         let callback;
         function setCallback (cb) {
             callback = cb;
@@ -181,7 +183,7 @@ export class Wrapped {
             </div>
         `;
 
-        wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
+        if (!lastScreen) wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
         wait(10).then(() => dom[`#${tempId}`].classList.add('transitioned-in'));
 
         wait(10).then(() => callback?.());
@@ -455,7 +457,6 @@ const endScreens = {
                     try {
                         await navigator.clipboard.writeText(shareLink);
                         e.innerText = 'Copied!';
-                        e.setAttribute('disabled', true);
                     } catch (err) {
                         try {
                             e.innerText = shareLink;
@@ -466,7 +467,8 @@ const endScreens = {
                             e.innerText = 'Failed to copy';
                         }
                     } finally {
-                        alert(e.getAttribute('onclick'));              
+                        e.setAttribute('onclick', '');
+                        e.setAttribute('disabled', true);
                     }
                 })}(this)">Copy Link</button>
             `}
