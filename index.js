@@ -1,43 +1,31 @@
 import api from './api.js';
 
+// Window helpers
+
 window.dom = new Proxy({ fn: document.querySelector.bind(document) }, {
     get ({ fn }, target) {
         return target == '$' ? fn : fn(target);
     }
 });
 
-window.wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+window.wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-window.html = ((strings, ...values) => {
+window.html = (strings, ...values) => {
     let html = '';
     strings.forEach((string, i) => {
         html += string;
         if (values[i]?.replace || values[i]?.toString) html += values[i].toString().replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))
     });
     return html;
-});
+};
 
-window.__stored_fn = {};
-
-window.fn = (fn) => {
+window.fn = fn => {
     const key = '__stored_fn_' + Date.now() + Math.floor(Math.random() * 10000);
     window[key] = fn;
     return key;
 }
 
-Number.prototype.$range = function () {
-    return Array.from({ length: this }, (_, i) => i + 1);
-}
-
-const params = object => '?' + Object.entries(object).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
-
-async function flattenPotentialPromise (promise) {
-    if (promise instanceof Promise) await promise;
-    return promise;
-}
-
-
-async function strategicFetcher (orgs, globalYear = new Date().getFullYear()) {
+window.strategicFetcher = async (orgs, globalYear = new Date().getFullYear()) => {
     function stackSegment (stack, index, number) {
         const output = [];
         for (let i = 0; i < number; i++) {
@@ -113,36 +101,15 @@ async function strategicFetcher (orgs, globalYear = new Date().getFullYear()) {
     return output;
 }
 
-window.strategicFetcher = strategicFetcher;
+// Project helpers
 
-async function pager (getPage, endCriteria, handlePages, upperLimit, onError) {
-    const pages = [];
-    for (let i = 0; !upperLimit || i < upperLimit; i++) {
-        let pageData;
-        try {
-            pageData = await flattenPotentialPromise(getPage(i + 1));
-        } catch (err) {
-            try {
-                pageData = await flattenPotentialPromise(getPage(i + 1));
-            } catch (err) {
-                onError(err);
-            }
-        }
-        pages.push(pageData);
-        const done = endCriteria(pageData);
-        if (done) break;
-    }
-
-    return handlePages(pages);
+async function flattenPotentialPromise (promise) {
+    // this is useful for supporting both async and non-async functions
+    if (promise instanceof Promise) await promise;
+    return promise;
 }
 
-async function setWordCloud (url) {
-    const res = await fetch(url);
-    const svg = await res.text();
-    dom['.wordcloud'].innerHTML = svg;
-    dom['.wordcloud'].style.fontWeight = 'bold';
-    dom['.wordcloud svg'].setAttribute('font-family', 'Phantom Sans');
-}
+// State management class for Bank Wrapped
 
 export class Wrapped {
     constructor (userId, orgSlugs, screens = {}, name, year = 2022) {
@@ -164,8 +131,7 @@ export class Wrapped {
         };
 
         this.metrics = {};
-        this.publicNextScreen = 'nextScreen' + Math.random().toString(36).substring(2, 15);
-        window[this.publicNextScreen] = () => this.nextScreen();
+        this.publicNextScreen = fn(() => this.nextScreen());
 
         this.allowClickNext = false;
 
@@ -184,7 +150,7 @@ export class Wrapped {
 
     async nextScreen () {
         this.currentScreen++;
-        const value = this.screens[this.currentScreen](this.metrics, this.data);
+        const value = await flattenPotentialPromise(this.screens[this.currentScreen](this.metrics, this.data));
         const tempId = 'id' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         if (dom['.content .transition-in'] && this.currentScreen !== this.screens.length - 1) {
             dom['.content .transition-in'].classList.add('transitioned-out');
@@ -231,6 +197,7 @@ export class Wrapped {
             ) / 1,
             1
         );
+        console.log(percentage);
         dom['#loading-value'].innerText = percentage;
         dom['.meter'].setAttribute('style', `--value: ${percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
@@ -281,21 +248,8 @@ export class Wrapped {
                 const [orgData, [transactions]] = await Promise.all([
                     await api.v3.organizations[org].get(),
                     strategicFetcher([org])
-                    // await pager(page => (this.orgUpdates++, api.v3.organizations[org].transactions.searchParams({ per_page: 150, page: page, expand: 'card_charge' }).get()), page => {
-                    //     return page.filter(tx => {
-                    //         let year = new Date(tx.date).getFullYear();
-                    //         return year < this.year;
-                    //     }).length != 0 || !page.length;
-                    // }, pages => pages.flat(), null, () => {
-                    //     clearInterval(interval);
-                    //     this.#reactiveUpdate(100);
-                    //     this.#reactiveUpdate(1);
-                    //     throw new Error('Request failed twice');
-                    // })
                 ]);
                 this.orgsCompleted++;
-                // this.orgUpdates = 0;
-                // this.orgUpdateMs = Date.now();
                 this.#indexOrg(orgData, transactions);
 
             })());
@@ -310,17 +264,6 @@ export class Wrapped {
 
         this.data.keywords_object = keywordsObject;
 
-//         setWordCloud('https://quickchart.io/wordcloud' + params({
-//             text: keywordsList.slice(0, 500).join(' '),
-//             colors: JSON.stringify(`#ec3750
-// #ff8c37
-// #f1c40f
-// #33d6a6
-// #5bc0de
-// #338eda
-// #a633d6`.split('\n')),
-//             nocache: Date.now()
-//         }));
 
         clearInterval(interval);
 
@@ -437,6 +380,26 @@ const dataScreens = {
                 You spent more than <span style="color: var(--red);">${Math.round(spendingPercentile)}%</span> of your teammates.
             </h1>
         `;
+    },
+    async wordCloud ({ top_keywords }) {
+        const keywordsList = Object.entries(top_keywords).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
+
+        const res = await fetch('https://quickchart.io/wordcloud?' + Object.entries({
+            text: keywordsList.slice(0, 500).join(' '),
+            colors: JSON.stringify(`#ec3750
+#ff8c37
+#f1c40f
+#33d6a6
+#5bc0de
+#338eda
+#a633d6`.split('\n')),
+            nocache: Date.now()
+        }).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&'));
+
+        const svg = await res.text();
+        dom['.wordcloud'].innerHTML = svg;
+        dom['.wordcloud'].style.fontWeight = 'bold';
+        dom['.wordcloud svg'].setAttribute('font-family', 'Phantom Sans');
     }
 }
 
