@@ -156,27 +156,21 @@ export class Wrapped {
             dom['.content .transition-in'].classList.add('transitioned-out');
             await wait(400);
         }
-        if (this.currentScreen !== this.screens.length - 1) dom['.content'].innerHTML = /*html*/`
-            <div class="transition-in" id="${tempId}">
+        
+        dom['.content'].innerHTML = /*html*/`
+            <div ${(this.currentScreen !== this.screens.length - 1) ? 'class=\"transition-in\"' : ''} id="${tempId}">
                 ${value}
             </div>
         `;
-        else dom['.content'].innerHTML = /*html*/`
-            <div id="${tempId}">
-                ${value}
-            </div>
-        `;
-
 
         dom['.content'].innerHTML += /*html*/`
             <div onclick="${this.publicNextScreen}()" class="transition-in" style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 30px; color: var(--muted); cursor: pointer;" id="${tempId}2">
                 →
             </div>
         `;
+
         wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
-        setTimeout(() => {
-            dom[`#${tempId}`].classList.add('transitioned-in');
-        }, 10);
+        wait(10).then(() => dom[`#${tempId}`].classList.add('transitioned-in'));
     }
 
     #exponentialCurve (x, cap = 100) {
