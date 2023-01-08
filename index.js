@@ -489,6 +489,8 @@ function run () {
     myWrapped.fetch().then(() => {
         fetch('/api/log?text=' + encodeURIComponent(myWrapped.shareLink))
     });
+
+    window['activeWrappedInstance'] = myWrapped;
 }
 
 run();
