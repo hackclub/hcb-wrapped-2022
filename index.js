@@ -113,6 +113,85 @@ async function flattenPotentialPromise (promise) {
     return promise;
 }
 
+// Money incrementer component
+
+class MoneyComponent {
+    constructor (amount, startDelay = 10, showCents = true, startAutomatically = true, time = 750, interval = 40, onEnd) {
+        this.elementId = 'money-component-' + Math.random().toString(16).substring(4, 10);
+        
+        this.amount = amount;
+        this.showCents = showCents;
+        this.time = time;
+        this.interval = interval;
+        
+        if (onEnd) this.onEnd = onEnd;
+        
+        if (startAutomatically) {
+            this.loadingIntervalId = setInterval(() => {
+                const element = document.querySelector('#' + this.elementId);
+                
+                if (!element || !this.loadingIntervalId) return;
+                clearInterval(this.loadingIntervalId);
+                this.loadingIntervalId = null;
+                
+                if (startDelay) wait(startDelay).then(() => this.start());
+                else this.start();
+            }, 20);
+        }
+    }
+    
+    toString () {
+        return /*html*/`
+            <span id="${this.elementId}">
+                $0
+            </span>
+        `;
+    }
+    
+    tick (time) {
+        const percent = time / this.time;
+        return this.amount * (1 - 0.98 ** (percent * 200));
+    }
+    
+    start () {
+        this.startTime = Date.now();
+        this.element = document.getElementById(this.elementId);
+        
+        if (!this.element) throw new Error('Could not fetch critical element with ID ' + this.elementId)
+        
+        this.runningIntervalId = setInterval(() => {
+            const timeElapsed = Date.now() - this.startTime;
+            const ended = timeElapsed > this.time;
+            
+            if (ended) {
+                this.setValue(this.amount);
+                clearInterval(this.runningIntervalId);
+                this.runningIntervalId = null;
+                return this.onEnd?.(true);
+            }
+            
+            const value = this.tick(timeElapsed);
+            this.setValue(value);
+        }, this.interval);
+    }
+    
+    setValue (value) {
+        this.element.innerText = ((this.showCents ? (Math.round(value * 100) / 100) : Math.round(value))?.toLocaleString?.("en", {
+            style: "currency",
+            currency: "USD",
+            ...(this.showCents ? { minimumFractionDigits: 2,
+                maximumFractionDigits: 2 } : {}),
+        }) ?? +value);
+    }
+        
+    stop () {
+        clearInterval(this.runningIntervalId);
+        this.runningIntervalId = null;
+        this.setValue(this.amount);
+        return this.onEnd?.(false);
+    }
+}
+
 // State management class for Bank Wrapped
 
 export class Wrapped {
@@ -276,7 +355,7 @@ export class Wrapped {
 
         clearInterval(interval);
 
-        setTimeout(() => this.#reactiveUpdate (100), 10);
+        setTimeout(() => this.#reactiveUpdate(100), 10);
 
         this.#wrap();
 
@@ -368,7 +447,6 @@ export class Wrapped {
             shareLink: this.shareLink
         };
 
-        console.debug(this.metrics, 'a')
         return this.metrics;
     }
 }
@@ -377,9 +455,11 @@ const searchParams = new URLSearchParams(window.location.search);
 
 const dataScreens = {
     totalSpent ({ amountSpent, orgs, mostSpentOrg }) {
-        return html`
+        return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                In 2022, you spent <span style="color: var(--red);">$${(amountSpent / 100).toLocaleString()}</span> across ${orgs} organizations.
+                In 2022, you spent <span style="color: var(--red);">
+                    ${new MoneyComponent(amountSpent/*Cents*/ / 100)}
+                </span> across ${orgs} organizations.
             </h1>
 
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
@@ -446,22 +526,25 @@ const dataScreens = {
 
 const endScreens = {
     month ({ busiestMonth }) {
-        return html`
+        return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 Your busiest month in 2022 was <span style="color: var(--red);">${busiestMonth.name}</span>.
             </h1>
 
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
-                You and your teams spent <span style="color: var(--red);">$${(busiestMonth.amount / 100).toLocaleString()}</span>.
+                You and your teams spent <span style="color: var(--red);">${new MoneyComponent(busiestMonth.amount/*Cents*/ / 100)}</span>.
             </h2>
 
             
         `
     },
     tx ({ transactions_cents }) {
-        return html`
+        return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                You and your teams transacted <span style="color: var(--red);">$${(transactions_cents / 100).toLocaleString()}</span> in 2022.
+                You and your teams transacted <span style="color: var(--red);">
+                
+                
+                ${new MoneyComponent(transactions_cents / 100)}</span> in 2022.
             </h1>
 
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
