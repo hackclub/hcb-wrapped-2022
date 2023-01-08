@@ -8,6 +8,9 @@ export default function handler (req, res) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/hc.css"></link>
         <meta property="og:image" content="https://workshop-cards.hackclub.com/${encodeURIComponent(data.split('_').reverse()[0] + '\'s')}.png?theme=dark&fontSize=225px&caption=Bank%2520Wrapped%25202022&brand=Bank">
+        <meta property="og:title" content="Bank Wrapped">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="theme-color" content="#ec3750">
         <title>Bank Wrapped</title>
         <style>
             * {
