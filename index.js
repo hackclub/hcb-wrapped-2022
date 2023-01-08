@@ -183,7 +183,7 @@ export class Wrapped {
             </div>
         `;
 
-        if (!lastScreen) wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
+        wait(2000).then(() => dom['#' + tempId + '2'].classList.add('transitioned-in'));
         wait(10).then(() => dom[`#${tempId}`].classList.add('transitioned-in'));
 
         wait(10).then(() => callback?.());
