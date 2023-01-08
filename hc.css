@@ -248,6 +248,7 @@ button.outline {
   background: none;
   color: var(--primary);
   border: 2px solid currentcolor;
+  box-sizing: border-box;
 }
 
 button.cta {

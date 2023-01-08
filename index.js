@@ -206,7 +206,7 @@ export class Wrapped {
             ) / 1,
             1
         );
-        console.log(percentage);
+        console.debug(percentage);
         dom['#loading-value'].innerText = percentage;
         dom['.meter'].setAttribute('style', `--value: ${percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
@@ -299,10 +299,10 @@ export class Wrapped {
         }
 
         dom['.eyebrow:not(.eyebrow-child)'].parentElement.innerHTML += html`
-            <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${continueFunctionName}()">Start →</button>
+            <button style="margin-top: var(--spacing-3);" class="button" onclick="${continueFunctionName}()">Start →</button>
         `;
 
-        console.log('share link', this.shareLink);
+        console.debug('share link', this.shareLink);
     }
 
     #wrap () {
@@ -346,11 +346,29 @@ export class Wrapped {
                 }
                 return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
             })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == this.userId)),
+            busiestMonth: (transactions => {
+                const months = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+                const occurances = {};
+                transactions.forEach(tx => {
+                    const month = months[+tx.date.split('-')[1] - 1];
+                    if (!occurances[month]) occurances[month] = 0;
+                    occurances[month] += Math.abs(tx.amount_cents);
+                });
+                let busiestMonth = '';
+                let busiestAmount = 0;
+                for (const month in occurances) {
+                    if (occurances[month] > busiestAmount) {
+                        busiestMonth = month;
+                        busiestAmount = occurances[month];
+                    }
+                }
+                return { name: busiestMonth, amount: busiestAmount };
+            })(this.data.transactions.filter(tx => tx.amount_cents < 0)),
             percent: this.data.percent,
             shareLink: this.shareLink
         };
 
-        console.log(this.metrics, 'a')
+        console.debug(this.metrics, 'a')
         return this.metrics;
     }
 }
@@ -427,15 +445,28 @@ const dataScreens = {
 }
 
 const endScreens = {
+    month ({ busiestMonth }) {
+        return html`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                Your busiest month in 2022 was <span style="color: var(--red);">${busiestMonth.name}</span>.
+            </h1>
+
+            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+                You and your teams spent <span style="color: var(--red);">$${(busiestMonth.amount / 100).toLocaleString()}</span>.
+            </h2>
+
+            
+        `
+    },
     tx ({ transactions_cents }) {
         return html`
-        <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-            You and your teams transacted <span style="color: var(--red);">$${(transactions_cents / 100).toLocaleString()}</span> in 2022.
-        </h1>
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                You and your teams transacted <span style="color: var(--red);">$${(transactions_cents / 100).toLocaleString()}</span> in 2022.
+            </h1>
 
-        <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
-            That's about <span style="color: var(--red);">${Math.round(transactions_cents / 3_086_742_14 * 10000) / 100}%</span> of all transactions in 2022.
-        </h2>
+            <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
+                That's about <span style="color: var(--red);">${Math.round(transactions_cents / 3_086_742_14 * 10000) / 100}%</span> of all transactions in 2022.
+            </h2>
         `
     },
     share ({ shareLink, name }) {
@@ -445,7 +476,7 @@ const endScreens = {
             </h2>
 
             ${navigator.share ? html`
-                <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${fn(() => {
+                <button style="margin-top: var(--spacing-3);" class="button" onclick="${fn(() => {
                     navigator.share({
                         title: 'Bank Wrapped',
                         text: `Check out ${name}'s Bank Wrapped!`,
@@ -453,7 +484,7 @@ const endScreens = {
                     })
                 })}()">Share</button>
             ` : html`
-                <button style="margin-top: var(--spacing-3);" class="btn-lg" onclick="${fn(async e => {
+                <button style="margin-top: var(--spacing-3);" class="button" onclick="${fn(async e => {
                     try {
                         await navigator.clipboard.writeText(shareLink);
                         e.innerText = 'Copied!';
@@ -472,6 +503,8 @@ const endScreens = {
                     }
                 })}(this)">Copy Link</button>
             `}
+
+            <button style="margin-top: var(--spacing-3); margin-left: 10px; padding: 7px 14px 7px 14px;" class="button outline" onclick="window.location.reload();">Watch Again</button>
         `;
     }
 }
@@ -483,7 +516,7 @@ const screens = {
 
 if (!searchParams.get('user_id') || !searchParams.get('org_ids')) location.replace('https://bank.hackclub.com/wrapped');
 const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens, searchParams.get('name'));
-console.log(myWrapped.shareLink);
+console.debug(myWrapped.shareLink);
 
 function run () {
     myWrapped.fetch().then(() => {
