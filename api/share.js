@@ -9,6 +9,7 @@ export default function handler (req, res) {
         <link rel="stylesheet" href="/hc.css"></link>
         <meta property="og:image" content="https://workshop-cards.hackclub.com/${encodeURIComponent(data.split('_').reverse()[0] + '\'s')}.png?theme=dark&fontSize=225px&caption=Bank%2520Wrapped%25202022&brand=Bank">
         <meta property="og:title" content="Bank Wrapped">
+        <meta property="og:description" content="Watch ${data.split('_').reverse()[0].replace(/[\u00A0-\u9999<>\&]/g, ((i) => `&#${i.charCodeAt(0)};`))}'s Bank Wrapped for 2022">
         <meta name="twitter:card" content="summary_large_image">
         <meta name="theme-color" content="#ec3750">
         <title>Bank Wrapped</title>
