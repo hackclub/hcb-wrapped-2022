@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./hc.css"></link>
+    <link rel="stylesheet" href="/hc.css"></link>
+    <meta property="og:image" content="./image.png">
     <title>Bank Wrapped</title>
     <style>
         * {
@@ -60,7 +61,7 @@
         }
 
         div.bg {
-            background: url("assets/freeze.svg");
+            background: url("/assets/freeze.svg");
             background-repeat: space;
             background-size: 80px 80px;
             color: white;
@@ -149,7 +150,7 @@
     <script>
         const params = new URL(window.location.href).searchParams;
 
-        if (!params.has('q')) window.location.replace('https://bank.hackclub.com/wrapped');
+        if (!params.has('q') && false) window.location.replace('https://bank.hackclub.com/wrapped');
         else {
             const q = params.get('q');
 

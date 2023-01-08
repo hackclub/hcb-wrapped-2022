@@ -9,6 +9,8 @@
         { "source": "/share", "destination": "/share.html" },
         { "source": "/share/:path*", "destination": "/share.html" },
         { "source": "/wrapped/:path*", "destination": "/wrapped.html" },
-        { "source": "/wrapped/:data/image", "destination": "/api/image" }
+        { "source": "/wrapped/:data/image", "destination": "/api/image" },
+        { "source": "/share/:data/image", "destination": "/api/image" },
+        { "source": "/share/:data/image.png", "destination": "/api/image" }
     ]
 }
