@@ -1,5 +1,6 @@
 export default function handler (req, res) {
-    const data = req.query.q ?? req.query.path;
+    const data = req.query?.q ?? req.query?.path;
+    if (!data) return res.redirect('https://bank.hackclub.com/wrapped');
     res.send(`<!DOCTYPE html>
     <html lang="en">
     <head>
