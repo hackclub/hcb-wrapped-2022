@@ -7,7 +7,7 @@ export default function handler (req, res) {
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="/hc.css"></link>
-        <meta property="og:image" content="https://bank-wrapped.hackclub.com/api/image?name=${data.split('_').reverse()[0]}">
+        <meta property="og:image" content="https://workshop-cards.hackclub.com/${encodeURIComponent(data.split('_').reverse()[0] + '\'s')}.png?theme=dark&fontSize=225px&caption=Bank%2520Wrapped%25202022&brand=Bank">
         <title>Bank Wrapped</title>
         <style>
             * {
