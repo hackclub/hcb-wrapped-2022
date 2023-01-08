@@ -177,7 +177,7 @@ class MoneyComponent {
     }
     
     setValue (value) {
-        if (this.notMoney) return this.element.innerText = Math.round(value);
+        if (this.isNotMoney) return this.element.innerText = Math.round(value);
         this.element.innerText = ((this.showCents ? (Math.round(value * 100) / 100) : Math.round(value))?.toLocaleString?.("en", {
             style: "currency",
             currency: "USD",
@@ -194,7 +194,7 @@ class MoneyComponent {
     }
 
     notMoney () {
-        this.notMoney = true;
+        this.isNotMoney = true;
         this.showCents = false;
         return this.toString();
     }
