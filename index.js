@@ -123,6 +123,7 @@ class MoneyComponent {
         this.showCents = showCents;
         this.time = time;
         this.interval = interval;
+        this.notMoney = false;
         
         if (onEnd) this.onEnd = onEnd;
         
@@ -176,6 +177,7 @@ class MoneyComponent {
     }
     
     setValue (value) {
+        if (this.notMoney) return this.element.innerText = Math.round(value);
         this.element.innerText = ((this.showCents ? (Math.round(value * 100) / 100) : Math.round(value))?.toLocaleString?.("en", {
             style: "currency",
             currency: "USD",
@@ -189,6 +191,12 @@ class MoneyComponent {
         this.runningIntervalId = null;
         this.setValue(this.amount);
         return this.onEnd?.(false);
+    }
+
+    notMoney () {
+        this.notMoney = true;
+        this.showCents = false;
+        return this.toString();
     }
 }
 
@@ -273,14 +281,14 @@ export class Wrapped {
     }
 
     #reactiveUpdate (value) {
-        const percentage = value ?? Math.max(
+        const percentage = this.percentageValue ?? value ?? Math.max(
             Math.floor(
                 (
                     this.#exponentialCurve(
-                        (Date.now() - this.orgUpdateMs) / 100,
+                        (Date.now() - this.orgUpdateMs) / 97,
                         100 / this.orgSlugs.length
                     )
-                    + (this.orgsCompleted) / this.orgSlugs.length * 100)
+                    + (this.orgsCompleted) / this.orgSlugs.length * 97)
                     * 1
             ) / 1,
             1
@@ -350,12 +358,28 @@ export class Wrapped {
 
         const keywordsList = Object.entries(keywordsObject).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
 
+        this.percentageValue = 97;
+
+        const res = await fetch('https://quickchart.io/wordcloud?' + Object.entries({
+            text: keywordsList.slice(0, 500).join(' '),
+            colors: JSON.stringify(`#ec3750
+#ff8c37
+#f1c40f
+#33d6a6
+#5bc0de
+#338eda
+#a633d6`.split('\n')),
+            nocache: Date.now()
+        }).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&'));
+
+        this.metrics.wordcloudSvg = await res.text();
+
+
         this.data.keywords_object = keywordsObject;
 
-
         clearInterval(interval);
-
-        setTimeout(() => this.#reactiveUpdate(100), 10);
+        this.percentageValue = 100;
+        setTimeout(() => this.#reactiveUpdate(100), 20);
 
         this.#wrap();
 
@@ -363,7 +387,7 @@ export class Wrapped {
             <h3 class="eyebrow eyebrow-child">Ready!</h3>
         `;
         else dom['.eyebrow'].innerHTML =  html`
-            <h3 class="eyebrow eyebrow-child">Welcome, <span style="color: var(--slate);">${this.data.name}</span>!</h3>
+            <h3 class="eyebrow eyebrow-child">Welcome, <span style="color: var(--slate);">${this.data.name.split(' ')[0]}</span>!</h3>
         `;
 
         let continued = false;
@@ -444,7 +468,9 @@ export class Wrapped {
                 return { name: busiestMonth, amount: busiestAmount };
             })(this.data.transactions.filter(tx => tx.amount_cents < 0)),
             percent: this.data.percent,
-            shareLink: this.shareLink
+            shareLink: this.shareLink,
+            activeDays: this.data.transactions.filter(tx => tx.card_charge?.user?.id == this.userId).length,
+            wordcloud: this.metrics.wordcloudSvg
         };
 
         return this.metrics;
@@ -487,25 +513,18 @@ const dataScreens = {
             </h1>
         `;
     },
-    async wordCloud ({ top_keywords }, _, onRender) {
-        const keywordsList = Object.entries(top_keywords).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
-
-        const rawRes = fetch('https://quickchart.io/wordcloud?' + Object.entries({
-            text: keywordsList.slice(0, 500).join(' '),
-            colors: JSON.stringify(`#ec3750
-#ff8c37
-#f1c40f
-#33d6a6
-#5bc0de
-#338eda
-#a633d6`.split('\n')),
-            nocache: Date.now()
-        }).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&'));
-
+    activeDays ({ activeDays }) {
+        return /*html*/`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                In 2022, you were active on Bank for <span style="color: var(--red);">
+                    ${new MoneyComponent(activeDays).notMoney()}
+                </span> days.
+            </h1>
+        `
+    },
+    async wordCloud ({ wordcloud }, _, onRender) {
         onRender(async () => {
-            const res = await rawRes;
-            const svg = await res.text();
-            dom['.wordcloud'].innerHTML = svg;
+            dom['.wordcloud'].innerHTML = wordcloud;
             dom['.wordcloud'].style.fontWeight = 'bold';
             dom['.wordcloud svg'].setAttribute('font-family', 'Phantom Sans');
             dom['.wordcloud svg'].setAttribute('viewBox', '0 0 600 600');
