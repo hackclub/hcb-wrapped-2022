@@ -172,7 +172,7 @@ export class Wrapped {
         }
         
         dom['.content'].innerHTML = /*html*/`
-            <div ${(this.currentScreen !== this.screens.length - 1) ? 'class=\"transition-in\"' : ''} id="${tempId}">
+            <div ${true ? 'class=\"transition-in\"' : ''} id="${tempId}">
                 ${value}
             </div>
         `;
