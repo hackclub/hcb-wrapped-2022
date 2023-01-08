@@ -211,7 +211,7 @@ export class Wrapped {
 
         this.screens = Object.values(screens);
         this.currentScreen = -1;
-        this.audio = new Audio("/bg-music.mp3");
+        this.audio = new Audio("/assets/bg-music.mp3");
 
         this.data = {
             collaborators: [],

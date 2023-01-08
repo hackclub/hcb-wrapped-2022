@@ -1,11 +1,11 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "redirects": [
-        { "source": "/", "destination": "/wrapped" },
         { "source": "/test", "destination": "https://bank.hackclub.com/wrapped" }
     ],
     "rewrites": [
         { "source": "/wrapped", "destination": "/wrapped.html" },
+        { "source": "/", "destination": "/wrapped.html" },
         { "source": "/share", "destination": "/api/share" },
         { "source": "/share/:path*", "destination": "/api/share" },
         { "source": "/wrapped/:path*", "destination": "/wrapped.html" },
