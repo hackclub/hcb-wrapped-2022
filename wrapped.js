@@ -297,7 +297,6 @@ export class Wrapped {
             ) / 1,
             1
         );
-        console.debug(percentage);
         dom['#loading-value'].innerText = percentage;
         dom['.meter'].setAttribute('style', `--value: ${percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
@@ -329,6 +328,8 @@ export class Wrapped {
         this.data.orgs.push({
             name: orgData.name,
             slug: orgData.slug,
+            logo: orgData.logo,
+            id: orgData.id,
             amountSpent,
         });
     }
@@ -420,6 +421,7 @@ export class Wrapped {
             amountSpent: this.data.orgs.reduce((acc, org) => acc + org.amountSpent, 0),
             mostSpentOrg: this.data.orgs.sort((a, b) => b.amountSpent - a.amountSpent)[0].name,
             mostSpentOrgSlug: this.data.orgs.sort((a, b) => b.amountSpent - a.amountSpent)[0].slug,
+            allOrgs: this.data.orgs,
             transactions_cents: this.data.global_transactions_cents,
             top_keywords: this.data.keywords_object,
             name: this.data.name,
@@ -557,7 +559,9 @@ const dataScreens = {
 }
 
 const endScreens = {
-    transactionSample: ({ userId, transactions, nextScreen }, _, onRender) => {
+    transactionSample: ({ userId, transactions, nextScreen, allOrgs }, _, onRender) => {
+        console.log(allOrgs);
+        console.log(transactions);
         dom['.content'].width = '100%';
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
@@ -565,12 +569,13 @@ const endScreens = {
             </h1>
 
             <div style="width: 100%;">
-                ${transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).sort(() => Math.random() - 0.5).sort(() => Math.random() - 0.5).slice(0, 4).map(transaction => html`
-                    <div style="width: 100%; height: 60px; margin-bottom: var(--spacing-3); background: #ec375020; border-radius: 8px; display: flex; box-sizing: border-box;">
-                        <span style="height: 100%; text-align: left; display: block; flex-grow: 1; line-break: anywhere; white-space: nowrap; overflow: hidden; display: block; text-overflow: ellipsis; align-items: center; padding: 14px; font-size: 18px;">${transaction.memo}</span>
+                ${transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).sort(() => Math.random() - 0.5).sort(() => Math.random() - 0.5).slice(0, 4).map(transaction => /*html*/`
+                    <a href="https://bank.hackclub.com/hcb/${transaction.id.substring(4)}" target="_blank" style="text-decoration: none!important; color: black!important;"><div style="width: 100%; height: 60px; margin-bottom: var(--spacing-3); background: #ec375020; border-radius: 8px; display: flex; box-sizing: border-box;">
+                        ${allOrgs.filter(org => org.id == transaction.organization.id)?.[0]?.logo ? /*html*/`<span style="height: 100%; align-items: center; flex-grow: 1; padding: 14px; font-size: 18px; display: flex;"><img style="width: 48px;" src="${allOrgs.filter(org => org.id == transaction.organization.id)?.[0]?.logo}" /></span>` : ''}
+                        <span style="height: 100%; text-align: left; display: block; flex-grow: 1; line-break: anywhere; white-space: nowrap; overflow: hidden; display: block; text-overflow: ellipsis; align-items: center; padding: 14px; font-size: 18px;">${html`${transaction.memo}`}</span>
                         <span class="tx-details" style="height: 100%; align-items: center; padding: 14px; font-size: 18px;">${transaction.date}</span>
                         <span class="tx-details" style="height: 100%; align-items: center; padding: 14px; font-size: 18px;">-$${Math.abs(transaction.amount_cents / 100).toLocaleString()}</span>
-                    </div>
+                    </div></a>
                 `).join('')}
             </div>
         `
