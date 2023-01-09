@@ -113,6 +113,10 @@ async function flattenPotentialPromise (promise) {
     return promise;
 }
 
+function plural (number, singular, plural) {
+    return number == 1 ? singular : plural;
+}
+
 // Money incrementer component
 
 class MoneyComponent {
@@ -123,7 +127,7 @@ class MoneyComponent {
         this.showCents = showCents;
         this.time = time;
         this.interval = interval;
-        this.notMoney = false;
+        this.isNotMoney = false;
         
         if (onEnd) this.onEnd = onEnd;
         
@@ -209,7 +213,7 @@ export class Wrapped {
         this.year = year;
         this.startingName = name;
 
-        this.screens = Object.values(screens);
+        this.screens = Object.values(screens).filter(screen => screen);
         this.currentScreen = -1;
         this.audio = new Audio("/assets/bg-music.mp3");
 
@@ -324,6 +328,7 @@ export class Wrapped {
 
         this.data.orgs.push({
             name: orgData.name,
+            slug: orgData.slug,
             amountSpent,
         });
     }
@@ -414,6 +419,7 @@ export class Wrapped {
             orgs: this.data.orgs.length,
             amountSpent: this.data.orgs.reduce((acc, org) => acc + org.amountSpent, 0),
             mostSpentOrg: this.data.orgs.sort((a, b) => b.amountSpent - a.amountSpent)[0].name,
+            mostSpentOrgSlug: this.data.orgs.sort((a, b) => b.amountSpent - a.amountSpent)[0].slug,
             transactions_cents: this.data.global_transactions_cents,
             top_keywords: this.data.keywords_object,
             name: this.data.name,
@@ -469,8 +475,14 @@ export class Wrapped {
             })(this.data.transactions.filter(tx => tx.amount_cents < 0)),
             percent: this.data.percent,
             shareLink: this.shareLink,
-            activeDays: this.data.transactions.filter(tx => tx.card_charge?.user?.id == this.userId).length,
-            wordcloud: this.metrics.wordcloudSvg
+            activeDays: this.data.transactions.filter(tx => tx.card_charge?.user?.id == this.userId).map(tx => tx.date).reduce((prev, curr) => {
+                if (!prev.includes(curr)) prev.push(curr);
+                return prev;
+            }, []).length,
+            wordcloud: this.metrics.wordcloudSvg,
+            transactions: this.data.transactions,
+            userId: this.userId,
+            nextScreen: this.publicNextScreen
         };
 
         return this.metrics;
@@ -480,7 +492,7 @@ export class Wrapped {
 const searchParams = new URLSearchParams(window.location.search);
 
 const dataScreens = {
-    totalSpent ({ amountSpent, orgs, mostSpentOrg }) {
+    totalSpent ({ amountSpent, orgs, mostSpentOrg, mostSpentOrgSlug }) {
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 In 2022, you spent <span style="color: var(--red);">
@@ -489,39 +501,40 @@ const dataScreens = {
             </h1>
 
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
-                Most of it was on <span style="color: var(--red);">${mostSpentOrg}</span>.
+                Most of it was on <a href="https://bank.hackclub.com/${mostSpentOrgSlug}" target="_blank" style="color: var(--red);">${html`${mostSpentOrg}`}</a>.
             </h2>
 
         `;
     },
-    splurgeDay ({ busiestDay, selfBusiestDay }) {
+    splurgeDay ({ busiestDay, selfBusiestDay, orgs }) {
         if (busiestDay == selfBusiestDay) return html`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                You and your teams spent the most on <span style="color: var(--red);">${busiestDay}s</span>.
+                You and your ${plural(orgs, 'team', 'teams')} spent the most on <span style="color: var(--red);">${busiestDay}s</span>.
             </h1>
         `;
         return html`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                Your teams spent the most on <span style="color: var(--red);">${busiestDay}s</span>, but you spent the most on <span style="color: var(--red);">${selfBusiestDay}s</span>.
+                Your ${plural(org, 'team', 'teams')} spent the most on <span style="color: var(--red);">${busiestDay}s</span>, but you spent the most on <span style="color: var(--red);">${selfBusiestDay}s</span>.
             </h1>
         `;
     },
-    percentile ({ spendingPercentile }) {
-        return html`
-            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                You spent more than <span style="color: var(--red);">${Math.round(spendingPercentile)}%</span> of your teammates.
-            </h1>
-        `;
-    },
-    activeDays ({ activeDays }) {
-        return /*html*/`
-            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                In 2022, you were active on Bank for <span style="color: var(--red);">
-                    ${new MoneyComponent(activeDays).notMoney()}
-                </span> days.
-            </h1>
-        `
-    },
+    // percentile ({ spendingPercentile }) {
+    //     return html`
+    //         <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+    //             You spent more than <span style="color: var(--red);">${Math.round(spendingPercentile)}%</span> of your teammates.
+    //         </h1>
+    //     `;
+    // },
+    // activeDays ({ activeDays }) {
+    //     return /*html*/`
+    //         <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+    //             In 2022, you were active on Bank for <span style="color: var(--red);">
+    //                 ${new MoneyComponent(activeDays).notMoney()}
+    //             </span> days.
+    //         </h1>
+    //     `
+    // },
+    // maybe add streaks in the future
     async wordCloud ({ wordcloud }, _, onRender) {
         onRender(async () => {
             dom['.wordcloud'].innerHTML = wordcloud;
@@ -544,7 +557,26 @@ const dataScreens = {
 }
 
 const endScreens = {
+    transactionSample: ({ userId, transactions, nextScreen }, _, onRender) => {
+        dom['.content'].width = '100%';
+        return /*html*/`
+            <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                You made <span style="color: var(--red);">${new MoneyComponent(transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).length).notMoney()}</span> card transactions in 2022. Here are a few of them.
+            </h1>
+
+            <div style="width: 100%;">
+                ${transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).sort(() => Math.random() - 0.5).sort(() => Math.random() - 0.5).slice(0, 4).map(transaction => html`
+                    <div style="width: 100%; height: 60px; margin-bottom: var(--spacing-3); background: #ec375020; border-radius: 8px; display: flex; box-sizing: border-box;">
+                        <span style="height: 100%; text-align: left; display: block; flex-grow: 1; line-break: anywhere; white-space: nowrap; overflow: hidden; display: block; text-overflow: ellipsis; align-items: center; padding: 14px; font-size: 18px;">${transaction.memo}</span>
+                        <span class="tx-details" style="height: 100%; align-items: center; padding: 14px; font-size: 18px;">${transaction.date}</span>
+                        <span class="tx-details" style="height: 100%; align-items: center; padding: 14px; font-size: 18px;">-$${Math.abs(transaction.amount_cents / 100).toLocaleString()}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `
+    },
     month ({ busiestMonth }) {
+        dom['.content'].width = 'unset';
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 Your busiest month in 2022 was <span style="color: var(--red);">${busiestMonth.name}</span>.

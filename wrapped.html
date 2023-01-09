@@ -60,12 +60,20 @@
             z-index: 22;
         }
 
+        .tx-details {
+            display: inline-flex;
+        }
+
         @media screen and (max-width: 600px) {
             div.main {
                 padding-top: var(--spacing-5);
                 padding-bottom: var(--spacing-5);
                 padding-left: var(--spacing-4);
                 padding-right: var(--spacing-4);
+            }
+
+            .tx-details {
+                display: none;
             }
         }
 
