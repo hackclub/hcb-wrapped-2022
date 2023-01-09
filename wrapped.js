@@ -516,7 +516,7 @@ const dataScreens = {
         `;
         return html`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                Your ${plural(org, 'team', 'teams')} spent the most on <span style="color: var(--red);">${busiestDay}s</span>, but you spent the most on <span style="color: var(--red);">${selfBusiestDay}s</span>.
+                Your ${plural(orgs, 'team', 'teams')} spent the most on <span style="color: var(--red);">${busiestDay}s</span>, but you spent the most on <span style="color: var(--red);">${selfBusiestDay}s</span>.
             </h1>
         `;
     },
@@ -563,6 +563,7 @@ const endScreens = {
         console.log(allOrgs);
         console.log(transactions);
         dom['.content'].width = '100%';
+        dom['div.main'].maxWidth = '700px';
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 You made <span style="color: var(--red);">${new MoneyComponent(transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).length).notMoney()}</span> card transactions in 2022. Here are a few of them.
@@ -581,6 +582,7 @@ const endScreens = {
     },
     month ({ busiestMonth }) {
         dom['.content'].width = 'unset';
+        dom['div.main'].maxWidth = '600px';
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 Your busiest month in 2022 was <span style="color: var(--red);">${busiestMonth.name}</span>.
