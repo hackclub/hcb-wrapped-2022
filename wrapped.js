@@ -108,8 +108,6 @@ window.strategicFetcher = async (orgs, globalYear = new Date().getFullYear()) =>
     }
 
     const output = await Promise.all(orgs.map(fetchOrg));
-
-    console.log({output})
     return output;
 }
 
@@ -478,7 +476,6 @@ export class Wrapped {
                 return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
             })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
             selfBusiestDay: (transactions => {
-                console.log({transactions})
                 const days = {};
                 for (const tx of transactions) {
                     const day = new Date(tx.date).getDay();
@@ -599,8 +596,6 @@ const dataScreens = {
 const endScreens = {
     transactionSample: ({ userId, transactions, nextScreen, allOrgs }, _, onRender, skip) => {
         if (!transactions) return skip();
-        console.log(allOrgs);
-        console.log(transactions);
         dom['.content'].width = '100%';
         dom['div.main'].maxWidth = '700px';
         const txns = transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).length;
