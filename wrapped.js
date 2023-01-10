@@ -39,13 +39,19 @@ window.strategicFetcher = async (orgs, globalYear = new Date().getFullYear()) =>
     }
 
     async function fetchOrg (org) {
-        async function fetchPage (page) {
-            const { parsed, raw: { headers } } = await api.v3.organizations[org].transactions.searchParams({ per_page: 150, page, expand: 'card_charge' }).get_raw()
-            const pageNumber = headers.get('X-Page');
-            const nextPage = headers.get('X-Next-Page');
-            const totalPages = headers.get('X-Total-Pages');
+        async function fetchPage (page, isSecondAttempt = false) {
+            try {
+                const { parsed, raw: { headers } } = await api.v3.organizations[org].transactions.searchParams({ per_page: 150, page, expand: 'card_charge' }).get_raw()
+                const pageNumber = headers.get('X-Page');
+                const nextPage = headers.get('X-Next-Page');
+                const totalPages = headers.get('X-Total-Pages');
 
-            return { data: parsed, pageNumber, nextPage, totalPages };
+                return { data: parsed, pageNumber, nextPage, totalPages };
+            } catch (err) {
+                if (isSecondAttempt) throw err;
+                await wait(500);
+                return await fetchPage(page, true);
+            }
         }
 
         let output = [];
@@ -102,6 +108,8 @@ window.strategicFetcher = async (orgs, globalYear = new Date().getFullYear()) =>
     }
 
     const output = await Promise.all(orgs.map(fetchOrg));
+
+    console.log({output})
     return output;
 }
 
@@ -221,6 +229,7 @@ export class Wrapped {
             collaborators: [],
             global_transactions_cents: 0,
             keywords: [],
+            transactionText: '',
             transactions: [],
             image_url: '',
             orgs: []
@@ -254,7 +263,14 @@ export class Wrapped {
             callback = cb;
         }
 
-        const value = await flattenPotentialPromise(this.screens[this.currentScreen](this.metrics, this.data, setCallback));
+        let skipScreen = false;
+        function skip () {
+            skipScreen = true;
+        }
+
+        const value = await flattenPotentialPromise(this.screens[this.currentScreen](this.metrics, this.data, setCallback, skip));
+        if (skipScreen) return await this.nextScreen();
+
         const tempId = 'id' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         if (dom['.content .transition-in'] && this.currentScreen !== this.screens.length - 1) {
             dom['.content .transition-in'].classList.add('transitioned-out');
@@ -284,6 +300,11 @@ export class Wrapped {
         return Math.max(0, (0 - (cap * 0.9)) * 0.993 ** x + (cap * 0.9));
     }
 
+    sendLoadingError (error) {
+        this.percentageValue = html`error!${error}`;
+        this.#reactiveUpdate;
+    }
+
     #reactiveUpdate (value) {
         const percentage = this.percentageValue ?? value ?? Math.max(
             Math.floor(
@@ -298,7 +319,8 @@ export class Wrapped {
             1
         );
         dom['#loading-value'].innerText = percentage;
-        dom['.meter'].setAttribute('style', `--value: ${percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
+        if ((percentage + '').startsWith('error!')) dom['#loading-value'].parentElement.innerHTML = percentage.substring(6);
+        dom['.meter'].setAttribute('style', `--value: ${(percentage + '').startsWith('error!') ? percentage.substring(6) : percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
 
     #indexOrg (orgData, transactions) {
@@ -311,6 +333,7 @@ export class Wrapped {
         
         for (const transaction of transactions) {
             this.data.transactions.push(transaction);
+            this.data.transactionText += transaction.memo.toLowerCase() + ' ';
             this.data.keywords.push(...transaction.memo.toLowerCase().split('').filter(char => `abcdefghijklmnopqrstuvwxyz1234567890_- `.includes(char)).join('').split(' ').filter(k => k).filter(k => ![
                 'the',
                 'of',
@@ -360,23 +383,29 @@ export class Wrapped {
         await Promise.all(asyncFns);
 
         const keywordsMap = new Map([...new Map([ ...new Set(this.data.keywords) ].map(keyword => [keyword, this.data.keywords.filter(k => k == keyword).length])).entries()].sort((a, b) => b[1] - a[1]));
-        const keywordsObject = Object.fromEntries([...keywordsMap.keys()].filter((keyword, i) => keywordsMap.get(keyword) > 5 && i <= 30).map(keyword => [keyword, keywordsMap.get(keyword)]));
+        const keywordsObject = Object.fromEntries([...keywordsMap.keys()]/*.filter((keyword, i) => keywordsMap.get(keyword) > 5 && i <= 30)*/.map(keyword => [keyword, keywordsMap.get(keyword)]));
 
         const keywordsList = Object.entries(keywordsObject).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
 
         this.percentageValue = 97;
 
-        const res = await fetch('https://quickchart.io/wordcloud?' + Object.entries({
-            text: keywordsList.slice(0, 500).join(' '),
-            colors: JSON.stringify(`#ec3750
+        const res = await fetch('https://quickchart.io/wordcloud', {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            method: 'POST',
+            body: JSON.stringify({
+                text: keywordsList.join(' '),
+                colors: JSON.stringify(`#ec3750
 #ff8c37
 #f1c40f
 #33d6a6
 #5bc0de
 #338eda
 #a633d6`.split('\n')),
-            nocache: Date.now()
-        }).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&'));
+                nocache: Date.now()
+            })
+        });
 
         this.metrics.wordcloudSvg = await res.text();
 
@@ -449,13 +478,19 @@ export class Wrapped {
                 return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
             })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
             selfBusiestDay: (transactions => {
+                console.log({transactions})
                 const days = {};
                 for (const tx of transactions) {
                     const day = new Date(tx.date).getDay();
                     if (!days[day]) days[day] = 0;
                     days[day]++;
                 }
-                return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
+                const dayList = [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ];
+                const dayEntries = Object.entries(days);
+                const sortedEntries = dayEntries.sort((a, b) => b[1] - a[1]);
+                const dayNumber = +sortedEntries?.[0]?.[0];
+                if (isNaN(dayNumber)) return undefined;
+                return dayList?.[dayNumber];
             })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == this.userId)),
             busiestMonth: (transactions => {
                 const months = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
@@ -494,7 +529,8 @@ export class Wrapped {
 const searchParams = new URLSearchParams(window.location.search);
 
 const dataScreens = {
-    totalSpent ({ amountSpent, orgs, mostSpentOrg, mostSpentOrgSlug }) {
+    totalSpent ({ amountSpent, orgs, mostSpentOrg, mostSpentOrgSlug }, _, __, skip) {
+        if (!amountSpent || !mostSpentOrg || !mostSpentOrgSlug) return skip();
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 In 2022, you spent <span style="color: var(--red);">
@@ -508,7 +544,8 @@ const dataScreens = {
 
         `;
     },
-    splurgeDay ({ busiestDay, selfBusiestDay, orgs }) {
+    splurgeDay ({ busiestDay, selfBusiestDay, orgs }, _, __, skip) {
+        if (!busiestDay || !selfBusiestDay) return skip();
         if (busiestDay == selfBusiestDay) return html`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 You and your ${plural(orgs, 'team', 'teams')} spent the most on <span style="color: var(--red);">${busiestDay}s</span>.
@@ -537,7 +574,8 @@ const dataScreens = {
     //     `
     // },
     // maybe add streaks in the future
-    async wordCloud ({ wordcloud }, _, onRender) {
+    async wordCloud ({ wordcloud }, _, onRender, skip) {
+        if (!wordcloud) return skip();
         onRender(async () => {
             dom['.wordcloud'].innerHTML = wordcloud;
             dom['.wordcloud'].style.fontWeight = 'bold';
@@ -559,7 +597,8 @@ const dataScreens = {
 }
 
 const endScreens = {
-    transactionSample: ({ userId, transactions, nextScreen, allOrgs }, _, onRender) => {
+    transactionSample: ({ userId, transactions, nextScreen, allOrgs }, _, onRender, skip) => {
+        if (!transactions) return skip();
         console.log(allOrgs);
         console.log(transactions);
         dom['.content'].width = '100%';
@@ -582,7 +621,8 @@ const endScreens = {
             </div>
         `
     },
-    month ({ busiestMonth }) {
+    month ({ busiestMonth }, _, __, skip) {
+        if (!busiestMonth) return skip();
         dom['.content'].width = 'unset';
         dom['div.main'].maxWidth = '600px';
         return /*html*/`
@@ -597,7 +637,8 @@ const endScreens = {
             
         `
     },
-    tx ({ transactions_cents }) {
+    tx ({ transactions_cents }, _, __, skip) {
+        if (!transactions_cents) return skip();
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 You and your teams transacted <span style="color: var(--red);">
@@ -661,8 +702,11 @@ const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org
 console.debug(myWrapped.shareLink);
 
 function run () {
+    if (window.location.href.startsWith('http://localhost')) dom['body'].classList.add('dev');
     myWrapped.fetch().then(() => {
         fetch('/api/log?text=' + encodeURIComponent(myWrapped.shareLink))
+    }).catch(err => {
+        myWrapped.sendLoadingError(err.name ?? 'Error');
     });
 
     window['activeWrappedInstance'] = myWrapped;
