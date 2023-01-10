@@ -401,7 +401,7 @@ export class Wrapped {
         window[continueFunctionName] = () => {
             if (continued) return;
             continued = true;
-            this.audio.volume = 0.7;
+            this.audio.volume = 0.4;
             this.audio.play();
             this.allowClickNext = true;
             this.nextScreen();
@@ -564,9 +564,11 @@ const endScreens = {
         console.log(transactions);
         dom['.content'].width = '100%';
         dom['div.main'].maxWidth = '700px';
+        const txns = transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).length;
+        if (txns == 0) onRender(() => window[nextScreen]());
         return /*html*/`
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-                You made <span style="color: var(--red);">${new MoneyComponent(transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge && tx.card_charge.user.id == userId).length).notMoney()}</span> card transactions in 2022. Here are a few of them.
+                You made <span style="color: var(--red);">${new MoneyComponent(txns).notMoney()}</span> card ${plural(txns, 'transaction', 'transactions')} in 2022. Here are a few of them.
             </h1>
 
             <div style="width: 100%;">
