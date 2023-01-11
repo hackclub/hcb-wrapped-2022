@@ -452,20 +452,20 @@ export class Wrapped {
             transactions_cents: this.data.global_transactions_cents,
             top_keywords: this.data.keywords_object,
             name: this.data.name,
-            spendingPercentile: (transactions => {
-                const cols = {};
-                const collaborators = this.data.collaborators.length;
-                for (const tx of transactions) {
-                    if (!cols[tx.card_charge.user.id]) cols[tx.card_charge.user.id] = 0;
-                    if (tx.card_charge.user.id !== this.userId) cols[tx.card_charge.user.id] += Math.abs(tx.amount_cents);
-                }
-                const amounts = ' '.repeat(collaborators - 1).split('').map((_, i) => Object.values(cols)[i]).map(a => a == undefined ? 0 : a);
-                const selfAmount = transactions.filter(tx => tx.card_charge.user.id == this.userId).reduce((acc, tx) => acc + Math.abs(tx.amount_cents), 0);
+            // spendingPercentile: (transactions => {
+            //     const cols = {};
+            //     const collaborators = this.data.collaborators.length;
+            //     for (const tx of transactions) {
+            //         if (!cols[tx.card_charge.user.id]) cols[tx.card_charge.user.id] = 0;
+            //         if (tx.card_charge.user.id !== this.userId) cols[tx.card_charge.user.id] += Math.abs(tx.amount_cents);
+            //     }
+            //     const amounts = ' '.repeat(collaborators - 1).split('').map((_, i) => Object.values(cols)[i]).map(a => a == undefined ? 0 : a);
+            //     const selfAmount = transactions.filter(tx => tx.card_charge.user.id == this.userId).reduce((acc, tx) => acc + Math.abs(tx.amount_cents), 0);
 
-                const percentile = (amounts.filter(a => a > selfAmount).length / collaborators) * 100;
-                return percentile;
+            //     const percentile = (amounts.filter(a => a > selfAmount).length / collaborators) * 100;
+            //     return percentile;
 
-            })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
+            // })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
             busiestDay: (transactions => {
                 const days = {};
                 for (const tx of transactions) {
@@ -473,7 +473,12 @@ export class Wrapped {
                     if (!days[day]) days[day] = 0;
                     days[day]++;
                 }
-                return ([ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ])[+Object.entries(days).sort((a, b) => b[1] - a[1])[0][0]];
+                const dayList = [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ];
+                const dayEntries = Object.entries(days);
+                const sortedEntries = dayEntries.sort((a, b) => b[1] - a[1]);
+                const dayNumber = +sortedEntries?.[0]?.[0];
+                if (isNaN(dayNumber)) return undefined;
+                return dayList?.[dayNumber];
             })(this.data.transactions.filter(tx => tx.amount_cents < 0 && tx.card_charge)),
             selfBusiestDay: (transactions => {
                 const days = {};
