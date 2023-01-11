@@ -272,6 +272,19 @@ export class Wrapped {
         }
     }
 
+    displayError (name, message) {
+        window.wrappedError = true;
+        dom['.content'].innerHTML = html`
+            <h2 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+                ${name}
+            </h2>
+            <h3 style="font-size: var(--font-4); margin-bottom: var(--spacing-4);">
+                ${message}
+            </h3>
+            <button style="margin-top: var(--spacing-3); margin-left: 10px; padding: 7px 14px 7px 14px;" class="button outline" onclick="window.location.href = 'https://bank.hackclub.com/wrapped';">Try Again</button>
+        `;
+    }
+
     async nextScreen () {
         this.currentScreen++;
 
@@ -402,8 +415,10 @@ export class Wrapped {
 
             })());
         }
-
+        
         await Promise.all(asyncFns);
+
+        if (!this.data.transactions?.length) return this.displayError("There aren't any transactions on your account.", "Your Bank Wrapped couldn't be generated.")
 
         const keywordsMap = new Map([...new Map([ ...new Set(this.data.keywords) ].map(keyword => [keyword, this.data.keywords.filter(k => k == keyword).length])).entries()].sort((a, b) => b[1] - a[1]));
         const keywordsObject = Object.fromEntries([...keywordsMap.keys()]/*.filter((keyword, i) => keywordsMap.get(keyword) > 5 && i <= 30)*/.map(keyword => [keyword, keywordsMap.get(keyword)]));
@@ -705,19 +720,11 @@ const screens = {
 }
 
 if (!searchParams.get('user_id')) location.replace('https://bank.hackclub.com/wrapped');
-if (!searchParams.get('org_ids')) {
-    window.wrappedError = true;
-    dom['.content'].innerHTML = html`
-        <h2 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
-            ${"You aren't in any transparent organizations, so we couldn't generate your Bank Wrapped."}
-        </h2>
-        <h3 style="font-size: var(--font-4); margin-bottom: var(--spacing-4);">
-            ${"If you join a transparent organization or turn on transparency mode, you can watch your Bank Wrapped next year."}
-        </h3>
-        <button style="margin-top: var(--spacing-3); margin-left: 10px; padding: 7px 14px 7px 14px;" class="button outline" onclick="window.location.href = 'https://bank.hackclub.com/wrapped';">Try Again</button>
-    `;
-}
 const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens, searchParams.get('name'));
+
+
+if (!searchParams.get('org_ids')) myWrapped.displayError("You aren't in any transparent organizations, so we couldn't generate your Bank Wrapped.", "If you join a transparent organization or turn on transparency mode, you can watch your Bank Wrapped next year.");
+
 console.debug(myWrapped.shareLink);
 
 function run () {
@@ -726,6 +733,7 @@ function run () {
         fetch('/api/log?text=' + encodeURIComponent(myWrapped.shareLink))
     }).catch(err => {
         myWrapped.sendLoadingError(err.name ?? 'Error');
+        console.error(err);
     });
 
     window['activeWrappedInstance'] = myWrapped;
