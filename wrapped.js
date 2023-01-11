@@ -123,6 +123,27 @@ function plural (number, singular, plural) {
     return number == 1 ? singular : plural;
 }
 
+async function fetchWordcloud (keywordsList) {
+    const res = await fetch('https://quickchart.io/wordcloud', {
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        method: 'POST',
+        body: JSON.stringify({
+            text: keywordsList.join(' '),
+            colors: JSON.stringify(`#ec3750
+#ff8c37
+#f1c40f
+#33d6a6
+#5bc0de
+#338eda
+#a633d6`.split('\n')),
+            nocache: Date.now()
+        })
+    });
+    return await res.text();
+}
+
 // Money incrementer component
 
 class MoneyComponent {
@@ -316,8 +337,12 @@ export class Wrapped {
             ) / 1,
             1
         );
-        dom['#loading-value'].innerText = percentage;
-        if ((percentage + '').startsWith('error!')) dom['#loading-value'].parentElement.innerHTML = percentage.substring(6);
+        if ((percentage + '').startsWith('error!')) {
+            dom['#loading-value'].parentElement.innerHTML = percentage.substring(6);
+            if (this.reactiveUpdateInterval) clearInterval(this.reactiveUpdateInterval);
+        } else {
+            dom['#loading-value'].innerText = percentage;
+        }
         dom['.meter'].setAttribute('style', `--value: ${(percentage + '').startsWith('error!') ? percentage.substring(6) : percentage / 100}; --offset: ${((Date.now() - this.orgUpdateMs) / 50) + 'px'}`);
     }
 
@@ -360,7 +385,7 @@ export class Wrapped {
 
         if (this.startingName) dom['#loading-text'].innerHTML = html`Loading <span style="color: var(--slate);">${this.startingName}</span>'s Bank Wrapped...`;
 
-        const interval = setInterval(() => this.#reactiveUpdate(), 50);
+        this.reactiveUpdateInterval = setInterval(() => this.#reactiveUpdate(), 50);
 
         const asyncFns = [];
 
@@ -387,30 +412,12 @@ export class Wrapped {
 
         this.percentageValue = 97;
 
-        const res = await fetch('https://quickchart.io/wordcloud', {
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            method: 'POST',
-            body: JSON.stringify({
-                text: keywordsList.join(' '),
-                colors: JSON.stringify(`#ec3750
-#ff8c37
-#f1c40f
-#33d6a6
-#5bc0de
-#338eda
-#a633d6`.split('\n')),
-                nocache: Date.now()
-            })
-        });
-
-        this.metrics.wordcloudSvg = await res.text();
+        this.metrics.wordcloudSvg = await fetchWordcloud(keywordsList);
 
 
         this.data.keywords_object = keywordsObject;
 
-        clearInterval(interval);
+        clearInterval(this.reactiveUpdateInterval);
         this.percentageValue = 100;
         setTimeout(() => this.#reactiveUpdate(100), 20);
 
@@ -537,7 +544,7 @@ const dataScreens = {
             <h1 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
                 In 2022, you spent <span style="color: var(--red);">
                     ${new MoneyComponent(amountSpent/*Cents*/ / 100)}
-                </span> across ${orgs} organizations.
+                </span> across ${orgs} ${plural(orgs, 'organization', 'organizations')}.
             </h1>
 
             <h2 style="font-size: var(--font-5); margin-bottom: var(--spacing-4);">
