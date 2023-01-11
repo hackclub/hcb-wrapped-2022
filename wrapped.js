@@ -421,7 +421,7 @@ export class Wrapped {
         if (!this.data.transactions?.length) return this.displayError("There aren't any transactions on your account.", "Your Bank Wrapped couldn't be generated.")
 
         const keywordsMap = new Map([...new Map([ ...new Set(this.data.keywords) ].map(keyword => [keyword, this.data.keywords.filter(k => k == keyword).length])).entries()].sort((a, b) => b[1] - a[1]));
-        const keywordsObject = Object.fromEntries([...keywordsMap.keys()].filter((keyword, i) => keywordsMap.get(keyword) > 5 && i <= 30).map(keyword => [keyword, keywordsMap.get(keyword)]));
+        const keywordsObject = Object.fromEntries([...keywordsMap.keys()].filter((keyword, i) => keywordsMap.get(keyword) > 4 && i <= 50).map(keyword => [keyword, keywordsMap.get(keyword)]));
 
         const keywordsList = Object.entries(keywordsObject).map(([keyword, count]) => ' '.repeat(count).split('').map(_ => keyword)).flat();
 
