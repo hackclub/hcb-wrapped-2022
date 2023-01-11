@@ -41,7 +41,7 @@ window.strategicFetcher = async (orgs, globalYear = new Date().getFullYear()) =>
     async function fetchOrg (org) {
         async function fetchPage (page, isSecondAttempt = false) {
             try {
-                const { parsed, raw: { headers } } = await api.v3.organizations[org].transactions.searchParams({ per_page: 150, page, expand: 'card_charge' }).get_raw()
+                const { parsed, raw: { headers } } = await api.v3.organizations[org].transactions.searchParams({ per_page: 50, page, expand: 'card_charge' }).get_raw()
                 const pageNumber = headers.get('X-Page');
                 const nextPage = headers.get('X-Next-Page');
                 const totalPages = headers.get('X-Total-Pages');
