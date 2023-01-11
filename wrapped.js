@@ -704,7 +704,19 @@ const screens = {
     ...endScreens
 }
 
-if (!searchParams.get('user_id') || !searchParams.get('org_ids')) location.replace('https://bank.hackclub.com/wrapped');
+if (!searchParams.get('user_id')) location.replace('https://bank.hackclub.com/wrapped');
+if (!searchParams.get('org_ids')) {
+    window.wrappedError = true;
+    dom['.content'].innerHTML = html`
+        <h2 class="title" style="font-size: 48px; margin-bottom: var(--spacing-4);">
+            ${"You aren't in any transparent organizations, so we couldn't generate your Bank Wrapped."}
+        </h2>
+        <h3 style="font-size: var(--font-4); margin-bottom: var(--spacing-4);">
+            ${"If you join a transparent organization or turn on transparency mode, you can watch your Bank Wrapped next year."}
+        </h3>
+        <button style="margin-top: var(--spacing-3); margin-left: 10px; padding: 7px 14px 7px 14px;" class="button outline" onclick="window.location.href = 'https://bank.hackclub.com/wrapped';">Try Again</button>
+    `;
+}
 const myWrapped = new Wrapped(searchParams.get('user_id'), searchParams.get('org_ids')?.split(',').sort(() => Math.random() - 0.5), screens, searchParams.get('name'));
 console.debug(myWrapped.shareLink);
 
@@ -719,4 +731,4 @@ function run () {
     window['activeWrappedInstance'] = myWrapped;
 }
 
-run();
+if (!window.wrappedError) run();
