@@ -415,7 +415,7 @@ export class Wrapped {
 
             })());
         }
-        
+
         await Promise.all(asyncFns);
 
         if (!this.data.transactions?.length) return this.displayError("There aren't any transactions on your account.", "Your Bank Wrapped couldn't be generated.")
@@ -427,7 +427,11 @@ export class Wrapped {
 
         this.percentageValue = 97;
 
-        this.metrics.wordcloudSvg = await fetchWordcloud(keywordsList);
+        try {
+            this.metrics.wordcloudSvg = await fetchWordcloud(keywordsList);
+        } catch (err) {
+            this.metrics.wordcloudSvg = await fetchWordcloud(keywordsList);
+        }
 
 
         this.data.keywords_object = keywordsObject;
