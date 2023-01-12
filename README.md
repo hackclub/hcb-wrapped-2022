@@ -6,8 +6,7 @@
 
 
 # Bank Wrapped
-Coming soon to a web browser near you
-
+Get yours at [bank.hackclub.com/wrapped](https://bank.hackclub.com/wrapped)!
 
 <br />
 <br />
