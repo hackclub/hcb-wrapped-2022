@@ -1,12 +1,12 @@
-<img src="https://user-images.githubusercontent.com/76178582/211174090-2e701cb7-a812-4417-a69e-d539f6a6b51c.png" width="100%" alt="Bank Wrapped Banner" />
+<img src="https://user-images.githubusercontent.com/76178582/211174090-2e701cb7-a812-4417-a69e-d539f6a6b51c.png" width="100%" alt="HCB Wrapped Banner" />
 
-[Get your Bank Wrapped →](https://hack.af/wrapped)
+[Get your HCB Wrapped →](https://hack.af/wrapped)
 
 <br />
 
 
-# Bank Wrapped
-Get yours at [bank.hackclub.com/wrapped](https://bank.hackclub.com/wrapped)!
+# HCB Wrapped
+Get yours at [hcb.hackclub.com/wrapped](https://hcb.hackclub.com/wrapped)!
 
 <br />
 <br />
