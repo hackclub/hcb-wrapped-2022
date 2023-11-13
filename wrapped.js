@@ -382,7 +382,7 @@ export class Wrapped {
                 'a'
             ].includes(k)));
         }
-        const amountSpent = transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.card_charge.user.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
+        const amountSpent = transactions.reduce((acc, tx) => acc + (tx.type == "card_charge" && tx.card_charge?.user?.id == this.userId ? Math.abs(tx.amount_cents) : 0), 0);
 
         this.data.orgs.push({
             name: orgData.name,
