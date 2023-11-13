@@ -734,7 +734,7 @@ console.debug(myWrapped.shareLink);
 function run () {
     if (window.location.href.startsWith('http://localhost')) dom['body'].classList.add('dev');
     myWrapped.fetch().then(() => {
-        fetch('/api/log?text=' + encodeURIComponent(myWrapped.shareLink))
+      //  fetch('/api/log?text=' + encodeURIComponent(myWrapped.shareLink))
     }).catch(err => {
         myWrapped.sendLoadingError(err.name ?? 'Error');
         console.error(err);
